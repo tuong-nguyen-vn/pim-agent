@@ -1,0 +1,43 @@
+{
+  "name": "@aaroncql/pim",
+  "version": "0.0.1",
+  "description": "Pim is to Pi what Vim is to Vi.",
+  "keywords": [
+    "pi-package"
+  ],
+  "type": "module",
+  "bin": {
+    "pim": "./bin/pim.ts"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "pi": {
+    "extensions": [
+      "./src/extensions"
+    ],
+    "prompts": [
+      "./src/prompts"
+    ],
+    "themes": [
+      "./src/themes"
+    ]
+  },
+  "scripts": {
+    "dev": "bun link && pim",
+    "typecheck": "tsgo --noEmit",
+    "lint": "oxlint .",
+    "format": "prettier --write --list-different package.json tsconfig.json oxlint.json .prettierrc.json \"src/**/*.ts\" \"bin/**/*.ts\" \"**/*.md\"",
+    "check": "bun run typecheck && bun run lint && bun run format"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "0.72.1",
+    "@types/bun": "latest",
+    "@typescript/native-preview": "^7.0.0-dev.20260505.1",
+    "oxlint": "^1.62.0",
+    "prettier": "^3.8.3"
+  }
+}
