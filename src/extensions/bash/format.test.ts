@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
+  detailsOf,
   formatResult,
-  formatStreamHeader,
+  formatTruncationAffordance,
   isErrorResult,
   stripTrailingNewline,
 } from "./format";
-import type { BashCommandResult } from "./schema";
+import {
+  type BashCommandResult,
+  STREAM_HEAD_BYTES,
+  STREAM_TAIL_BYTES,
+} from "./schema";
 
 function makeResult(
   overrides: Partial<BashCommandResult> = {}
@@ -34,24 +39,21 @@ describe("stripTrailingNewline", () => {
   });
 });
 
-describe("formatStreamHeader", () => {
-  test("plain label when not truncated", () => {
-    expect(
-      formatStreamHeader("stdout", {
-        text: "x",
-        totalBytes: 1,
-        truncated: false,
-      })
-    ).toBe("stdout:");
-  });
-  test("includes byte count when truncated", () => {
-    expect(
-      formatStreamHeader("stderr", {
-        text: "x",
-        totalBytes: 12345,
-        truncated: true,
-      })
-    ).toBe("stderr (12345 bytes):");
+describe("formatTruncationAffordance", () => {
+  test("emits bracketed affordance with byte counts and next-step", () => {
+    const out = formatTruncationAffordance("stderr", {
+      text: "x",
+      totalBytes: 12345,
+      truncated: true,
+    });
+    expect(out.startsWith("[bash tool:")).toBe(true);
+    expect(out.endsWith("]")).toBe(true);
+    expect(out).toContain("stderr truncated");
+    expect(out).toContain(`first ${STREAM_HEAD_BYTES} bytes`);
+    expect(out).toContain(`last ${STREAM_TAIL_BYTES} bytes`);
+    expect(out).toContain("of 12345");
+    expect(out).toContain("redirect to a file");
+    expect(out).toContain("read");
   });
 });
 
@@ -99,6 +101,53 @@ describe("formatResult", () => {
       30_000
     );
     expect(out).toBe("Exit code: 1\nstdout:\nout\nstderr:\nerr");
+  });
+
+  test("appends bracket affordance after a truncated stream body", () => {
+    const out = formatResult(
+      makeResult({
+        stdout: { text: "head…tail", totalBytes: 99999, truncated: true },
+      }),
+      30_000
+    );
+    const lines = out.split("\n");
+    expect(lines[0]).toBe("Exit code: 0");
+    expect(lines[1]).toBe("stdout:");
+    expect(lines[2]).toBe("head…tail");
+    expect(lines[3]?.startsWith("[bash tool: stdout truncated")).toBe(true);
+    expect(lines[3]?.endsWith("]")).toBe(true);
+  });
+
+  test("does not append affordance when stream is not truncated", () => {
+    const out = formatResult(
+      makeResult({
+        stdout: { text: "ok", totalBytes: 2, truncated: false },
+      }),
+      30_000
+    );
+    expect(out).not.toContain("[bash tool:");
+  });
+});
+
+describe("detailsOf", () => {
+  test("mirrors per-stream truncation and byte counts", () => {
+    const details = detailsOf(
+      makeResult({
+        exitCode: 1,
+        durationMs: 42,
+        stdout: { text: "x", totalBytes: 99999, truncated: true },
+        stderr: { text: "y", totalBytes: 5, truncated: false },
+      })
+    );
+    expect(details).toEqual({
+      exitCode: 1,
+      signal: null,
+      durationMs: 42,
+      timedOut: false,
+      aborted: false,
+      stdout: { totalBytes: 99999, truncated: true },
+      stderr: { totalBytes: 5, truncated: false },
+    });
   });
 });
 

@@ -32,10 +32,17 @@ export type BashCommandResult = {
   readonly durationMs: number;
 };
 
+export type BashStreamDetails = {
+  readonly totalBytes: number;
+  readonly truncated: boolean;
+};
+
 export type BashDetails = {
   readonly exitCode: number | null;
   readonly signal: NodeJS.Signals | null;
   readonly durationMs: number;
   readonly timedOut: boolean;
   readonly aborted: boolean;
+  readonly stdout: BashStreamDetails;
+  readonly stderr: BashStreamDetails;
 };
