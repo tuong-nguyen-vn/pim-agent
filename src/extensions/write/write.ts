@@ -5,7 +5,6 @@ import { DiffLines, type ToolDiff } from "../../shared/DiffLines";
 const CONTEXT_LINES = 3;
 
 export type WriteOutcome = {
-  readonly absolutePath: string;
   readonly bytesWritten: number;
   readonly created: boolean;
   readonly diff?: ToolDiff;
@@ -19,7 +18,7 @@ export async function writeContent(
   const bytesWritten = Buffer.byteLength(content, "utf8");
 
   if (prior === content) {
-    return { absolutePath, bytesWritten, created: false };
+    return { bytesWritten, created: false };
   }
 
   await mkdir(dirname(absolutePath), { recursive: true });
@@ -33,7 +32,6 @@ export async function writeContent(
   );
 
   return {
-    absolutePath,
     bytesWritten,
     created: prior === undefined,
     ...(diff === undefined ? {} : { diff }),

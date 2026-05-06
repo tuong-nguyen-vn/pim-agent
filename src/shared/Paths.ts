@@ -17,6 +17,14 @@ export class Paths {
     return rel;
   }
 
+  public static titleOr(
+    path: string | undefined,
+    cwd: string,
+    placeholder = "..."
+  ): string {
+    return path ? Paths.displayRelative(path, cwd) : placeholder;
+  }
+
   private static expandHome(value: string): string {
     if (value === "~") {
       return homedir();

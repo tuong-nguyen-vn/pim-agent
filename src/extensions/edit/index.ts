@@ -3,43 +3,46 @@ import { Container, type Text } from "@mariozechner/pi-tui";
 import { DiffView } from "../../shared/DiffView";
 import { Paths } from "../../shared/Paths";
 import { Renderer } from "../../shared/Renderer";
-import { type WriteInput, writeSchema } from "./schema";
-import { writeContent, type WriteOutcome } from "./write";
+import { type EditOutcome, editFile, formatEditSummary } from "./edit";
+import { type EditInput, editSchema } from "./schema";
 
 const ERROR_PREVIEW_LINES = 12;
 
-type WriteRenderState = {
+type EditRenderState = {
   titleComponent?: Text;
   path?: string;
 };
 
 export default function (pi: ExtensionAPI): void {
   pi.registerTool({
-    name: "write",
-    label: "write",
+    name: "edit",
+    label: "edit",
     description:
-      "Write whole UTF-8 text content to a file path. Creates the file (and parent directories) if missing, otherwise overwrites it. Returns a structured diff against the prior content.",
-    promptSnippet: "Create or overwrite text files.",
-    promptGuidelines: ["Use write only for new files or full rewrites."],
-    parameters: writeSchema,
+      "Edit a UTF-8 text file using LINE+ID anchors copied verbatim from `read`. All anchors in one call must come from the same pre-edit read. Don't guess or construct anchors. Don't emit overlapping edits.",
+    promptSnippet: "Edit text files via hashline anchors.",
+    promptGuidelines: [
+      "Always read the file first; copy LINE+ID anchors verbatim from read output.",
+      "Group related changes into a single edit call; the batch is atomic.",
+    ],
+    parameters: editSchema,
     renderShell: "self",
     async execute(_id, params, signal, _onUpdate, ctx) {
-      const { path, content } = params as WriteInput;
+      const { path, edits } = params as EditInput;
 
       if (signal?.aborted) {
-        throw new Error("Write aborted before execution.");
+        throw new Error("Edit aborted before execution.");
       }
 
       const absolutePath = Paths.resolve(path, ctx.cwd);
-      const outcome = await writeContent(absolutePath, content);
+      const outcome = await editFile(absolutePath, edits);
 
       return {
-        content: [{ type: "text", text: formatSummary(path, outcome) }],
+        content: [{ type: "text", text: formatEditSummary(path, outcome) }],
         details: outcome,
       };
     },
     renderCall(args, theme, context) {
-      const state = context.state as WriteRenderState;
+      const state = context.state as EditRenderState;
       const rawPath = typeof args?.path === "string" ? args.path : undefined;
       const display = Paths.titleOr(rawPath, context.cwd);
       state.path = display;
@@ -48,7 +51,7 @@ export default function (pi: ExtensionAPI): void {
         Boolean(context.isError)
       );
       const text = DiffView.buildTitle({
-        label: "Write",
+        label: "Edit",
         path: display,
         stats: { added: 0, removed: 0 },
         theme,
@@ -59,7 +62,7 @@ export default function (pi: ExtensionAPI): void {
       return text;
     },
     renderResult(result, options, theme, context) {
-      const state = context.state as WriteRenderState;
+      const state = context.state as EditRenderState;
       const fallback =
         (context.lastComponent as Container | undefined) ?? new Container();
 
@@ -79,14 +82,14 @@ export default function (pi: ExtensionAPI): void {
       }
 
       const details = result.details as
-        | { readonly diff?: WriteOutcome["diff"] }
+        | { readonly diff?: EditOutcome["diff"] }
         | undefined;
       const diff = details?.diff;
       const stats = DiffView.countStats(diff);
 
       if (state.titleComponent && state.path !== undefined) {
         DiffView.buildTitle({
-          label: "Write",
+          label: "Edit",
           path: state.path,
           stats,
           theme,
@@ -107,14 +110,4 @@ export default function (pi: ExtensionAPI): void {
       });
     },
   });
-}
-
-function formatSummary(path: string, outcome: WriteOutcome): string {
-  const verb = outcome.created ? "Created" : "Wrote";
-
-  if (outcome.diff === undefined && !outcome.created) {
-    return `Wrote ${outcome.bytesWritten} bytes to ${path} (no changes).`;
-  }
-
-  return `${verb} ${outcome.bytesWritten} bytes at ${path}.`;
 }

@@ -47,6 +47,24 @@ export class Renderer {
     return "success";
   }
 
+  public static extractErrorText(
+    result: {
+      readonly content?: ReadonlyArray<{
+        readonly type: string;
+        readonly text?: string;
+      }>;
+    },
+    fallback: string
+  ): string {
+    const text = (result.content ?? [])
+      .filter((item) => item.type === "text")
+      .map((item) => item.text ?? "")
+      .join("\n")
+      .trim();
+
+    return text || fallback;
+  }
+
   public static buildPreviewLines(
     body: string,
     maxLines: number

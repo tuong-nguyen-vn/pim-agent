@@ -2,14 +2,6 @@ import { type Static, Type } from "typebox";
 
 export const MAX_READ_BYTES = 32 * 1024;
 
-const readFormatSchema = Type.Union(
-  [Type.Literal("hashline"), Type.Literal("plain")],
-  {
-    description:
-      "Output format - `hashline` includes edit anchors, `plain` returns raw file. Defaults to `hashline`.",
-  }
-);
-
 export const readSchema = Type.Object({
   path: Type.String({ description: "Path to the file to read." }),
   start: Type.Optional(
@@ -25,12 +17,17 @@ export const readSchema = Type.Object({
         "Last line to return, 1-indexed and inclusive. Defaults to EOF or the byte cap.",
     })
   ),
-  format: Type.Optional(readFormatSchema),
+  format: Type.Optional(
+    Type.Union([Type.Literal("hashline"), Type.Literal("plain")], {
+      description:
+        "Output format - `hashline` includes edit anchors, `plain` returns raw file. Defaults to `hashline`.",
+    })
+  ),
 });
 
 export type ReadInput = Static<typeof readSchema>;
 
-export type ReadFormat = Static<typeof readFormatSchema>;
+export type ReadFormat = ReadInput["format"];
 
 export type ReadRange = {
   readonly start: number;

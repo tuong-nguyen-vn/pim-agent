@@ -199,6 +199,13 @@ export class Hashline {
   }
 
   public static parseAnchor(ref: string): Anchor {
+    if (/\r?\n/u.test(ref)) {
+      const lineCount = ref.split(/\r?\n/u).length;
+      throw new Error(
+        `[E_BAD_REF] Anchor must be a single LINE+ID reference (e.g. "42sr") — got ${lineCount} lines. For a range replace, set "pos" to the first line's anchor and "end" to the last line's anchor; do not paste the block content into "pos".`
+      );
+    }
+
     const match = ref.match(Hashline.anchorPattern);
 
     if (match === null) {
