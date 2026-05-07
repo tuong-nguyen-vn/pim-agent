@@ -1,0 +1,46 @@
+import { Paths } from "../../shared/Paths";
+import type { GlobMatch } from "./glob";
+
+export type RenderOutcome = {
+  readonly body: string;
+  readonly totalItems: number;
+  readonly visibleItems: number;
+  readonly truncated: boolean;
+};
+
+export function renderFiles(
+  matches: readonly GlobMatch[],
+  headLimit: number
+): RenderOutcome {
+  if (matches.length === 0) {
+    return {
+      body: "No matches.",
+      totalItems: 0,
+      visibleItems: 0,
+      truncated: false,
+    };
+  }
+
+  const lines = matches.map((match) => match.path);
+  const visible = lines.slice(0, headLimit);
+  const truncated = lines.length > headLimit;
+
+  return {
+    body: visible.join("\n"),
+    totalItems: lines.length,
+    visibleItems: visible.length,
+    truncated,
+  };
+}
+
+export type TitleOptions = {
+  readonly pattern: string | undefined;
+  readonly path: string | undefined;
+  readonly cwd: string;
+};
+
+export function formatTitle(options: TitleOptions): string {
+  const pattern = options.pattern ?? "...";
+  const target = Paths.titleOr(options.path, options.cwd, ".");
+  return `${pattern} in ${target}`;
+}

@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { FsErrors } from "../../shared/FsErrors";
 import { GitignoreFilter } from "../../shared/GitignoreFilter";
@@ -37,7 +36,7 @@ export async function findMatches(
   glob: string | undefined,
   regex: RegExp
 ): Promise<readonly GrepMatch[]> {
-  const metadata = await statOrThrow(path);
+  const metadata = await FsErrors.statOrThrow(path);
   const files = metadata.isFile()
     ? [path]
     : await scanFiles(path, glob ?? "**/*");
@@ -120,28 +119,4 @@ function comparePaths(left: string, right: string): number {
     return 1;
   }
   return 0;
-}
-
-async function statOrThrow(
-  path: string
-): Promise<Awaited<ReturnType<typeof stat>>> {
-  try {
-    return await stat(path);
-  } catch (error) {
-    const code = FsErrors.code(error);
-
-    if (code === "ENOENT") {
-      throw new Error(
-        `Path not found: ${path}. Use glob to locate the file or directory, or verify the path.`
-      );
-    }
-
-    if (code === "EACCES" || code === "EPERM") {
-      throw new Error(`Permission denied accessing ${path}.`);
-    }
-
-    throw new Error(
-      `Cannot stat ${path}: ${code ?? (error instanceof Error ? error.message : "unknown error")}.`
-    );
-  }
 }
