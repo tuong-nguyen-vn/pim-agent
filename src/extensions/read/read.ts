@@ -1,4 +1,5 @@
 import { stat } from "node:fs/promises";
+import { FsErrors } from "../../shared/FsErrors";
 import { Hashline } from "../../shared/Hashline";
 import { MAX_READ_BYTES, type ReadFormat, type ReadRange } from "./schema";
 
@@ -208,7 +209,7 @@ async function metadataOrThrow(
   try {
     return await stat(path);
   } catch (error) {
-    if (errorCode(error) === "ENOENT") {
+    if (FsErrors.code(error) === "ENOENT") {
       throw new Error(
         `File not found: ${path}. Use glob to locate the file or verify the path.`
       );
@@ -219,7 +220,7 @@ async function metadataOrThrow(
 }
 
 function rethrowFsError(error: unknown, path: string, action: string): never {
-  const code = errorCode(error);
+  const code = FsErrors.code(error);
 
   if (code === "EACCES" || code === "EPERM") {
     throw new Error(`Permission denied reading ${path}.`);
@@ -228,10 +229,4 @@ function rethrowFsError(error: unknown, path: string, action: string): never {
   throw new Error(
     `Cannot ${action} ${path}: ${code ?? (error instanceof Error ? error.message : "unknown error")}.`
   );
-}
-
-function errorCode(error: unknown): string | undefined {
-  return typeof error === "object" && error !== null && "code" in error
-    ? String((error as { code: unknown }).code)
-    : undefined;
 }
