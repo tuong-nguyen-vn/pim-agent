@@ -29,8 +29,8 @@ export class DiffRenderer {
   private static readonly DARK_BG: DiffBackgrounds = {
     added: "\x1b[48;2;13;40;24m",
     removed: "\x1b[48;2;58;20;20m",
-    addedEmph: "\x1b[48;2;31;102;58m",
-    removedEmph: "\x1b[48;2;110;36;36m",
+    addedEmph: "\x1b[48;2;26;81;47m",
+    removedEmph: "\x1b[48;2;100;35;35m",
   };
   private static readonly LIGHT_BG: DiffBackgrounds = {
     added: "\x1b[48;2;218;251;225m",

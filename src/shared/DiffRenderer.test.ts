@@ -138,8 +138,8 @@ describe("DiffRenderer.render", () => {
 
     const out = DiffRenderer.render({ toolDiff: diff, theme: stubTheme });
 
-    expect(out).toContain("\x1b[48;2;31;102;58m");
-    expect(out).toContain("\x1b[48;2;110;36;36m");
+    expect(out).toContain("\x1b[48;2;26;81;47m");
+    expect(out).toContain("\x1b[48;2;100;35;35m");
   });
 
   test("does not render any EOF newline marker (EOF state is surfaced by callers, not the renderer)", () => {

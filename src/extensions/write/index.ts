@@ -20,7 +20,9 @@ export default function (pi: ExtensionAPI): void {
     description:
       "Write whole UTF-8 text content to a file path. Creates the file (and parent directories) if missing, otherwise overwrites it. Returns a structured diff against the prior content.",
     promptSnippet: "Create or overwrite text files.",
-    promptGuidelines: ["Use write only for new files or full rewrites."],
+    promptGuidelines: [
+      "Use write only for new files or full rewrites; prefer edit for changes to existing files.",
+    ],
     parameters: writeSchema,
     renderShell: "self",
     async execute(_id, params, signal, _onUpdate, ctx) {

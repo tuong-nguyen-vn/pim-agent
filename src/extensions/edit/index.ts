@@ -21,8 +21,8 @@ export default function (pi: ExtensionAPI): void {
       "Edit a UTF-8 text file using LINE+ID anchors copied verbatim from `read`. All anchors in one call must come from the same pre-edit read. Don't guess or construct anchors. Don't emit overlapping edits.",
     promptSnippet: "Edit text files via hashline anchors.",
     promptGuidelines: [
-      "Always read the file first; copy LINE+ID anchors verbatim from read output.",
-      "Group related changes into a single edit call; the batch is atomic.",
+      "Use edit only after reading the file; copy LINE+ID anchors verbatim from the read output.",
+      "Use edit to batch related changes into one atomic call rather than calling edit multiple times.",
     ],
     parameters: editSchema,
     renderShell: "self",
