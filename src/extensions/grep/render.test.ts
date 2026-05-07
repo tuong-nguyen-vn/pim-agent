@@ -65,15 +65,14 @@ describe("renderMatches", () => {
 });
 
 describe("formatTitle", () => {
-  test("uses relative path under cwd and includes glob and mode", () => {
+  test("uses relative path under cwd and includes glob", () => {
     const title = formatTitle({
       pattern: "alpha",
       path: "/repo/src",
       glob: "**/*.ts",
-      outputMode: "content",
       cwd: "/repo",
     });
-    expect(title).toBe("/alpha/ in src **/*.ts (content)");
+    expect(title).toBe("/alpha/ in src **/*.ts");
   });
 
   test("falls back to '.' when path is omitted", () => {
@@ -81,9 +80,30 @@ describe("formatTitle", () => {
       pattern: "alpha",
       path: undefined,
       glob: undefined,
-      outputMode: "files_with_matches",
       cwd: "/repo",
     });
-    expect(title).toBe("/alpha/ in . (files_with_matches)");
+    expect(title).toBe("/alpha/ in .");
+  });
+
+  test("appends pluralized file count when provided", () => {
+    const title = formatTitle({
+      pattern: "alpha",
+      path: "/repo/src",
+      glob: "**/*.ts",
+      cwd: "/repo",
+      fileCount: 3,
+    });
+    expect(title).toBe("/alpha/ in src **/*.ts (3 files)");
+  });
+
+  test("uses singular noun for a single file", () => {
+    const title = formatTitle({
+      pattern: "alpha",
+      path: undefined,
+      glob: undefined,
+      cwd: "/repo",
+      fileCount: 1,
+    });
+    expect(title).toBe("/alpha/ in . (1 file)");
   });
 });

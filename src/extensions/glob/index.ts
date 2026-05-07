@@ -6,6 +6,7 @@ import { formatTitle, renderFiles } from "./render";
 import { GLOB_HEAD_LIMIT_MAX, type GlobInput, globSchema } from "./schema";
 
 const PREVIEW_LINES = 10;
+const fileCountByToolCallId = new Map<string, number>();
 
 export default function (pi: ExtensionAPI): void {
   pi.registerTool({
@@ -19,7 +20,7 @@ export default function (pi: ExtensionAPI): void {
     ],
     parameters: globSchema,
     renderShell: "self",
-    async execute(_id, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       const { pattern, path, headLimit } = params as GlobInput;
 
       if (signal?.aborted) {
@@ -30,6 +31,7 @@ export default function (pi: ExtensionAPI): void {
       const absolutePath = Paths.resolve(path ?? ".", ctx.cwd);
       const matches = await findFiles(absolutePath, pattern);
       const outcome = renderFiles(matches, limit);
+      fileCountByToolCallId.set(toolCallId, matches.length);
 
       const content: Array<{ type: "text"; text: string }> = [
         { type: "text", text: outcome.body },
@@ -59,6 +61,7 @@ export default function (pi: ExtensionAPI): void {
         pattern: input.pattern,
         path: input.path,
         cwd: context.cwd,
+        fileCount: fileCountByToolCallId.get(context.toolCallId),
       });
       return Renderer.renderToolCallTitle({
         label: "Glob",

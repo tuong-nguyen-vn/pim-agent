@@ -12,6 +12,7 @@ import {
 
 const PREVIEW_LINES = 10;
 const DEFAULT_OUTPUT_MODE: GrepOutputMode = "files_with_matches";
+const fileCountByToolCallId = new Map<string, number>();
 
 export default function (pi: ExtensionAPI): void {
   pi.registerTool({
@@ -25,7 +26,7 @@ export default function (pi: ExtensionAPI): void {
     ],
     parameters: grepSchema,
     renderShell: "self",
-    async execute(_id, params, signal, _onUpdate, ctx) {
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
       const {
         pattern,
         path,
@@ -53,6 +54,7 @@ export default function (pi: ExtensionAPI): void {
       const absolutePath = Paths.resolve(path ?? ".", ctx.cwd);
       const matches = await findMatches(absolutePath, glob, regex);
       const outcome = renderMatches(matches, mode, limit);
+      fileCountByToolCallId.set(toolCallId, outcome.fileCount);
 
       const content: Array<{ type: "text"; text: string }> = [
         { type: "text", text: outcome.body },
@@ -84,8 +86,8 @@ export default function (pi: ExtensionAPI): void {
         pattern: input.pattern,
         path: input.path,
         glob: input.glob,
-        outputMode: input.outputMode ?? DEFAULT_OUTPUT_MODE,
         cwd: context.cwd,
+        fileCount: fileCountByToolCallId.get(context.toolCallId),
       });
       return Renderer.renderToolCallTitle({
         label: "Grep",

@@ -66,15 +66,19 @@ export type TitleOptions = {
   readonly pattern: string | undefined;
   readonly path: string | undefined;
   readonly glob: string | undefined;
-  readonly outputMode: GrepOutputMode;
   readonly cwd: string;
+  readonly fileCount?: number;
 };
 
 export function formatTitle(options: TitleOptions): string {
   const pattern = options.pattern ?? "...";
   const target = Paths.titleOr(options.path, options.cwd, ".");
   const glob = options.glob ? ` ${options.glob}` : "";
-  return `/${pattern}/ in ${target}${glob} (${options.outputMode})`;
+  const suffix =
+    options.fileCount === undefined
+      ? ""
+      : ` (${options.fileCount} ${options.fileCount === 1 ? "file" : "files"})`;
+  return `/${pattern}/ in ${target}${glob}${suffix}`;
 }
 
 function renderFiles(matches: readonly GrepMatch[]): readonly string[] {

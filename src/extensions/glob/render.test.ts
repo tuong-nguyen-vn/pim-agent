@@ -43,13 +43,31 @@ describe("formatTitle", () => {
     expect(title).toBe("**/*.ts in src");
   });
 
-  test("falls back to '.' when path is undefined", () => {
+  test("omits location when path is undefined", () => {
     const title = formatTitle({
       pattern: "**/*.ts",
       path: undefined,
       cwd: "/repo",
     });
-    expect(title).toBe("**/*.ts in .");
+    expect(title).toBe("**/*.ts");
+  });
+
+  test("omits location when path resolves to cwd", () => {
+    const title = formatTitle({
+      pattern: "**/*.ts",
+      path: ".",
+      cwd: "/repo",
+    });
+    expect(title).toBe("**/*.ts");
+  });
+
+  test("omits location when path is the absolute cwd", () => {
+    const title = formatTitle({
+      pattern: "**/*.ts",
+      path: "/repo",
+      cwd: "/repo",
+    });
+    expect(title).toBe("**/*.ts");
   });
 
   test("uses '...' placeholder when pattern is undefined", () => {
@@ -58,6 +76,36 @@ describe("formatTitle", () => {
       path: undefined,
       cwd: "/repo",
     });
-    expect(title).toBe("... in .");
+    expect(title).toBe("...");
+  });
+
+  test("appends pluralized file count when provided", () => {
+    const title = formatTitle({
+      pattern: "**/*.ts",
+      path: "/repo/src",
+      cwd: "/repo",
+      fileCount: 3,
+    });
+    expect(title).toBe("**/*.ts in src (3 files)");
+  });
+
+  test("uses singular noun for a single file", () => {
+    const title = formatTitle({
+      pattern: "**/*.ts",
+      path: undefined,
+      cwd: "/repo",
+      fileCount: 1,
+    });
+    expect(title).toBe("**/*.ts (1 file)");
+  });
+
+  test("shows zero count without omitting the suffix", () => {
+    const title = formatTitle({
+      pattern: "**/*.ts",
+      path: undefined,
+      cwd: "/repo",
+      fileCount: 0,
+    });
+    expect(title).toBe("**/*.ts (0 files)");
   });
 });

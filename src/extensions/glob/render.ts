@@ -37,10 +37,23 @@ export type TitleOptions = {
   readonly pattern: string | undefined;
   readonly path: string | undefined;
   readonly cwd: string;
+  readonly fileCount?: number;
 };
 
 export function formatTitle(options: TitleOptions): string {
   const pattern = options.pattern ?? "...";
-  const target = Paths.titleOr(options.path, options.cwd, ".");
-  return `${pattern} in ${target}`;
+  const resolved =
+    options.path === undefined
+      ? undefined
+      : Paths.resolve(options.path, options.cwd);
+  const target =
+    resolved === undefined || resolved === options.cwd
+      ? undefined
+      : Paths.displayRelative(resolved, options.cwd);
+  const location = target ? ` in ${target}` : "";
+  const suffix =
+    options.fileCount === undefined
+      ? ""
+      : ` (${options.fileCount} ${options.fileCount === 1 ? "file" : "files"})`;
+  return `${pattern}${location}${suffix}`;
 }
