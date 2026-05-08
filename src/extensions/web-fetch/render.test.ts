@@ -3,27 +3,18 @@ import { formatTitle } from "./render";
 
 describe("formatTitle", () => {
   test("returns placeholder when url is undefined", () => {
-    expect(formatTitle(undefined, undefined, undefined)).toBe("...");
+    expect(formatTitle(undefined, undefined)).toBe("...");
   });
 
-  test("returns bare url for auto / undefined format pre-result", () => {
-    expect(formatTitle("https://example.com", undefined, undefined)).toBe(
+  test("returns bare url pre-result", () => {
+    expect(formatTitle("https://example.com", undefined)).toBe(
       "https://example.com"
-    );
-    expect(formatTitle("https://example.com", "auto", undefined)).toBe(
-      "https://example.com"
-    );
-  });
-
-  test("annotates url with explicit format pre-result", () => {
-    expect(formatTitle("https://example.com", "markdown", undefined)).toBe(
-      "https://example.com [markdown]"
     );
   });
 
   test("renders size + format label after result arrives", () => {
     expect(
-      formatTitle("https://example.com", "auto", {
+      formatTitle("https://example.com", {
         format: "markdown",
         totalBytes: 23 * 1024,
       })
@@ -32,7 +23,7 @@ describe("formatTitle", () => {
 
   test("strips trailing zeros and supports two decimals", () => {
     expect(
-      formatTitle("https://example.com", undefined, {
+      formatTitle("https://example.com", {
         format: "html",
         totalBytes: 5355,
       })
@@ -41,7 +32,7 @@ describe("formatTitle", () => {
 
   test("renders bytes for tiny payloads", () => {
     expect(
-      formatTitle("https://example.com", undefined, {
+      formatTitle("https://example.com", {
         format: "markdown",
         totalBytes: 512,
       })
@@ -50,7 +41,7 @@ describe("formatTitle", () => {
 
   test("renders MB for large payloads", () => {
     expect(
-      formatTitle("https://example.com", undefined, {
+      formatTitle("https://example.com", {
         format: "html",
         totalBytes: 2.5 * 1024 * 1024,
       })

@@ -65,7 +65,7 @@ export default function (pi: ExtensionAPI): void {
       const state = context.state as WebFetchRenderState;
       return Renderer.renderToolCallTitle({
         label: "Web Fetch",
-        title: formatTitle(input.url, input.format, state.outcome),
+        title: formatTitle(input.url, state.outcome),
         theme,
         context,
       });

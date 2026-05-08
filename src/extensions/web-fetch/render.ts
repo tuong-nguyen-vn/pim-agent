@@ -1,4 +1,4 @@
-import type { WebFetchFormat, WebFetchResolvedFormat } from "./schema";
+import type { WebFetchResolvedFormat } from "./schema";
 
 export type WebFetchTitleOutcome = {
   readonly format: WebFetchResolvedFormat;
@@ -7,7 +7,6 @@ export type WebFetchTitleOutcome = {
 
 export function formatTitle(
   url: string | undefined,
-  format: WebFetchFormat | undefined,
   outcome: WebFetchTitleOutcome | undefined
 ): string {
   const u = url ?? "...";
@@ -17,11 +16,7 @@ export function formatTitle(
     return `${u} (${formatSize(outcome.totalBytes)} ${label})`;
   }
 
-  if (format === undefined || format === "auto") {
-    return u;
-  }
-
-  return `${u} [${format}]`;
+  return u;
 }
 
 function formatSize(bytes: number): string {
