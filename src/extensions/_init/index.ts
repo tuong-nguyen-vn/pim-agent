@@ -97,4 +97,12 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   pi.on("session_before_compact", (_event, ctx) => {
     clearSplash(ctx);
   });
+
+  pi.registerCommand("clear", {
+    description: "Start a new session (alias: /new)",
+    handler: async (_args, ctx) => {
+      await ctx.waitForIdle();
+      await ctx.newSession();
+    },
+  });
 }
