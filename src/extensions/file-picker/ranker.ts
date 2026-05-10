@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { AutocompleteItem } from "@mariozechner/pi-tui";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import {
   FuzzyMatcher,
   type FuzzyCandidate,

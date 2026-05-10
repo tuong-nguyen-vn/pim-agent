@@ -3,13 +3,13 @@ import type {
   Theme,
   ThemeColor,
   ToolRenderResultOptions,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import {
   type Component,
   Container,
   Text,
   wrapTextWithAnsi,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 
 type RenderContext = {
   readonly lastComponent: Component | undefined;

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { dirname, join } from "node:path";
 
-const PI_PACKAGE = "@mariozechner/pi-coding-agent";
+const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 
 function findPiCli(): string {
   const globalCli = resolveGlobalPiCli();

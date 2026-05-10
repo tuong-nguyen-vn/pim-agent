@@ -1,5 +1,5 @@
-import type { AssistantMessageEvent } from "@mariozechner/pi-ai";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { AssistantMessageEvent } from "@earendil-works/pi-ai";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { PimSettings } from "../../shared/PimSettings";
 
 type RequestTiming = {

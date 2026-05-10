@@ -2,11 +2,11 @@
 
 _Pim Agent is to Pi Agent what Vim is to Vi._
 
-A Bun-native, opinionated extension pack for [Pi Agent](https://www.npmjs.com/package/@mariozechner/pi-coding-agent).
+A Bun-native, opinionated extension pack for [Pi Agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent).
 
 ## Quick Start
 
-Assumes [`pi`](https://www.npmjs.com/package/@mariozechner/pi-coding-agent) and [`bun`](https://bun.com/docs/installation) are already installed globally.
+Assumes [`pi`](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) and [`bun`](https://bun.com/docs/installation) are already installed globally.
 
 ```bash
 # Install the Pim Agent extension pack

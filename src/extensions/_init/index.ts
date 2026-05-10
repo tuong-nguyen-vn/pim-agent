@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const SPLASH_ID = "pim-splash";
 
@@ -17,7 +17,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   if (typeof Bun === "undefined") {
     throw new Error(
       "Pim requires the Bun runtime.\n" +
-        "Install pi via: bun install -g @mariozechner/pi-coding-agent\n" +
+        "Install pi via: bun install -g @earendil-works/pi-coding-agent\n" +
         "Then run: bunx pi\n" +
         "Node-installed pi is not supported."
     );

@@ -32,10 +32,10 @@
     "check": "bun run typecheck && bun run test && bun run lint && bun run format"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "*"
+    "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
-    "@mariozechner/pi-coding-agent": "0.73.0",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260505.1",
     "oxlint": "^1.62.0",

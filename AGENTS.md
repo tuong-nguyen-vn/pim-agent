@@ -1,6 +1,6 @@
 # Developer Guide
 
-Pim Agent is a Bun-native, opinionated extension pack for [Pi Agent](https://www.npmjs.com/package/@mariozechner/pi-coding-agent).
+Pim Agent is a Bun-native, opinionated extension pack for [Pi Agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent).
 
 `bin/pim.ts` is a Bun launcher that resolves pi's `cli.js` and runs it under Bun, bypassing pi's Node shebang. Other pi extensions still work normally.
 
@@ -17,15 +17,15 @@ Dev setup: `bun link` puts `pim` on PATH; `.pi/settings.json` registers Pim Agen
 
 ## Pi Extension API
 
-Shallow clone of [pi-mono](https://github.com/badlogic/pi-mono) at `vendor/pi-mono/` (gitignored). Bootstrap: `git clone --depth 1 https://github.com/badlogic/pi-mono.git vendor/pi-mono`. Refresh: `git -C vendor/pi-mono pull`. Clone tracks `main`; if behavior diverges, check installed version in `node_modules/@mariozechner/pi-coding-agent/package.json` and `git -C vendor/pi-mono checkout <tag>`.
+Shallow clone of [pi](https://github.com/earendil-works/pi) at `vendor/pi/` (gitignored). Bootstrap: `git clone --depth 1 https://github.com/earendil-works/pi.git vendor/pi`. Refresh: `git -C vendor/pi pull`. Clone tracks `main`; if behavior diverges, check installed version in `node_modules/@earendil-works/pi-coding-agent/package.json` and `git -C vendor/pi checkout <tag>`.
 
-Primary ref: `vendor/pi-mono/packages/coding-agent/docs/extensions.md` (~2600 lines). Don't read whole — `grep -n '^##\|^###' …/extensions.md` for the section index, then `Read` with offset/limit. Sibling docs: `compaction.md`, `custom-provider.md`, `keybindings.md`, `models.md`, `packages.md`, `sdk.md`, `session-format.md`, `settings.md`, `skills.md`, `themes.md`, `tui.md`. Source under `vendor/pi-mono/packages/coding-agent/src/` is canonical.
+Primary ref: `vendor/pi/packages/coding-agent/docs/extensions.md` (~2600 lines). Don't read whole — `grep -n '^##\|^###' …/extensions.md` for the section index, then `Read` with offset/limit. Sibling docs: `compaction.md`, `custom-provider.md`, `keybindings.md`, `models.md`, `packages.md`, `sdk.md`, `session-format.md`, `settings.md`, `skills.md`, `themes.md`, `tui.md`. Source under `vendor/pi/packages/coding-agent/src/` is canonical.
 
 ### Cheatsheet
 
 **Extension shape** — TS module, default export `(pi: ExtensionAPI) => void | Promise<void>` (async factories finish before `session_start`). Auto-discovered from `~/.pi/agent/extensions/*.ts`, `.pi/extensions/*.ts`, or `*/index.ts` subdirs of either. In this repo: `src/extensions/<name>/index.ts` (helpers colocated), `src/prompts/`, `src/themes/`, all wired via `.pi/settings.json` and the `pi` field of `package.json`.
 
-**Imports** — `@mariozechner/pi-coding-agent` (`ExtensionAPI`, `ExtensionContext`, event types), `typebox` (tool params), `@mariozechner/pi-ai` (`StringEnum`), `@mariozechner/pi-tui` (custom rendering). Node built-ins + npm deps work.
+**Imports** — `@earendil-works/pi-coding-agent` (`ExtensionAPI`, `ExtensionContext`, event types), `typebox` (tool params), `@earendil-works/pi-ai` (`StringEnum`), `@earendil-works/pi-tui` (custom rendering). Node built-ins + npm deps work.
 
 **`pi.*`** — `on`, `registerTool`, `registerCommand`, `registerShortcut`, `registerFlag`, `registerProvider`, `registerMessageRenderer`, `appendEntry` (session-persistent state), `sendMessage`/`sendUserMessage`, `setModel`, `getActiveTools`/`setActiveTools`, `events`, `exec`.
 

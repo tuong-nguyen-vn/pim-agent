@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { AutocompleteItem } from "@mariozechner/pi-tui";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { rank } from "./ranker";
 
 const item = (name: string, description?: string): AutocompleteItem => ({

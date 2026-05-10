@@ -1,5 +1,5 @@
-import type { Theme } from "@mariozechner/pi-coding-agent";
-import { type Component, Container, Text } from "@mariozechner/pi-tui";
+import type { Theme } from "@earendil-works/pi-coding-agent";
+import { type Component, Container, Text } from "@earendil-works/pi-tui";
 import type { ToolDiff } from "./DiffLines";
 import { DiffRenderer } from "./DiffRenderer";
 import { type MarkerStatus, Renderer } from "./Renderer";
