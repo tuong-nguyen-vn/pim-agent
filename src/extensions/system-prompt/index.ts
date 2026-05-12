@@ -4,8 +4,14 @@ import { buildSystemPrompt } from "./prompt";
 
 export default function (pi: ExtensionAPI): void {
   pi.on("before_agent_start", (event) => {
-    const { cwd, contextFiles, skills, promptGuidelines, appendSystemPrompt } =
-      event.systemPromptOptions;
+    const {
+      cwd,
+      contextFiles,
+      skills,
+      promptGuidelines,
+      appendSystemPrompt,
+      customPrompt,
+    } = event.systemPromptOptions;
     return {
       systemPrompt: buildSystemPrompt({
         cwd,
@@ -14,6 +20,7 @@ export default function (pi: ExtensionAPI): void {
           skills && skills.length > 0 ? formatSkillsForPrompt(skills) : "",
         toolGuidelines: promptGuidelines ?? [],
         appendSystemPrompt,
+        customPrompt,
       }),
     };
   });

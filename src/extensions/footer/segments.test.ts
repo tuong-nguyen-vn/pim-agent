@@ -82,28 +82,28 @@ describe("renderFooterLine", () => {
     expect(stripAnsi(renderFooterLine(200, ctx, git, 1.23))).toContain("$1.23");
     expect(stripAnsi(renderFooterLine(200, ctx, git, 1.23))).toContain("main");
     expect(stripAnsi(renderFooterLine(200, ctx, git, 1.23))).toContain(
-      "50%/200K"
+      "50.0%/200K"
     );
 
     const withoutModel = stripAnsi(renderFooterLine(50, ctx, git, 1.23));
     expect(withoutModel).not.toContain("gpt-5.5");
     expect(withoutModel).toContain("$1.23");
     expect(withoutModel).toContain("main");
-    expect(withoutModel).toContain("50%/200K");
+    expect(withoutModel).toContain("50.0%/200K");
 
     const withoutCost = stripAnsi(renderFooterLine(40, ctx, git, 1.23));
     expect(withoutCost).not.toContain("$1.23");
     expect(withoutCost).toContain("main");
-    expect(withoutCost).toContain("50%/200K");
+    expect(withoutCost).toContain("50.0%/200K");
 
     const withoutGit = stripAnsi(renderFooterLine(35, ctx, git, 1.23));
     expect(withoutGit).not.toContain("main");
     expect(withoutGit).toContain("/x/proj");
-    expect(withoutGit).toContain("50%/200K");
+    expect(withoutGit).toContain("50.0%/200K");
 
     const cwdOnly = stripAnsi(renderFooterLine(20, ctx, git, 1.23));
     expect(cwdOnly).toContain("/x/proj");
-    expect(cwdOnly).not.toContain("50%/200K");
+    expect(cwdOnly).not.toContain("50.0%/200K");
   });
 
   test("renders latest reasoning level for reasoning models", () => {

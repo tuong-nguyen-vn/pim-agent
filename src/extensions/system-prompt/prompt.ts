@@ -7,6 +7,7 @@ type BuildOptions = {
   readonly skillsBlock: string;
   readonly toolGuidelines: ReadonlyArray<string>;
   readonly appendSystemPrompt?: string;
+  readonly customPrompt?: string;
 };
 
 function dynamicGuidelines(): ReadonlyArray<string> {
@@ -22,15 +23,19 @@ function dynamicGuidelines(): ReadonlyArray<string> {
 export function buildSystemPrompt(opts: BuildOptions): string {
   const sections: string[] = [];
 
-  sections.push(
-    [
-      "<system_instructions>",
-      "You are pim (Pi IMproved), a Bun-native, opinionated extension pack for the [pi agent harness](https://pi.dev/).",
-      ...opts.toolGuidelines.map((g) => `- ${g}`),
-      ...dynamicGuidelines().map((g) => `- ${g}`),
-      "</system_instructions>",
-    ].join("\n")
-  );
+  if (opts.customPrompt && opts.customPrompt.trim().length > 0) {
+    sections.push(opts.customPrompt);
+  } else {
+    sections.push(
+      [
+        "<system_instructions>",
+        "You are pim (Pi IMproved), a Bun-native, opinionated extension pack for the [pi agent harness](https://pi.dev/).",
+        ...opts.toolGuidelines.map((g) => `- ${g}`),
+        ...dynamicGuidelines().map((g) => `- ${g}`),
+        "</system_instructions>",
+      ].join("\n")
+    );
+  }
 
   sections.push(
     [

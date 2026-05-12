@@ -73,7 +73,7 @@ function ctxSegment(ctx: ExtensionContext): Segment | null {
   const text =
     usage.percent === null
       ? `?/${window}`
-      : `${usage.percent.toFixed(0)}%/${window}`;
+      : `${usage.percent.toFixed(1)}%/${window}`;
   const percent = usage.percent ?? 0;
   const bg =
     percent >= 70
