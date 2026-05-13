@@ -42,6 +42,22 @@ function resolveGlobalPiCli(): string | null {
   return Bun.file(cliPath).size > 0 ? cliPath : null;
 }
 
+const cliArgs = process.argv.slice(2);
+const modeIdx = cliArgs.findIndex(
+  (a) => a === "--mode" || a.startsWith("--mode=")
+);
+const mode =
+  modeIdx >= 0
+    ? cliArgs[modeIdx]!.includes("=")
+      ? cliArgs[modeIdx]!.split("=")[1]
+      : cliArgs[modeIdx + 1]
+    : undefined;
+if (mode === "telegram") {
+  const { Daemon } = await import("../src/telegram/Daemon.ts");
+  await Daemon.main(cliArgs);
+  process.exit(0);
+}
+
 const piCli = findPiCli();
 const proc = Bun.spawn({
   cmd: [process.execPath, piCli, ...process.argv.slice(2)],
