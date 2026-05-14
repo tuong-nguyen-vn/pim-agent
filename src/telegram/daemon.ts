@@ -1,5 +1,5 @@
-import { Bot } from "./Bot.ts";
-import { loadConfig, parseArgs } from "./config.ts";
+import { Bot } from "./Bot";
+import { loadConfig, parseArgs } from "./config";
 
 export async function runDaemon(args: ReadonlyArray<string>): Promise<void> {
   const cli = parseArgs(args);

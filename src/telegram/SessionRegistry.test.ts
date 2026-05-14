@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import { loadState, saveStateAtomic, type TelegramConfig } from "./config.ts";
-import { SessionRegistry } from "./SessionRegistry.ts";
+import { loadState, saveStateAtomic, type TelegramConfig } from "./config";
+import { SessionRegistry } from "./SessionRegistry";
 
 let tmp: string;
 let config: TelegramConfig;

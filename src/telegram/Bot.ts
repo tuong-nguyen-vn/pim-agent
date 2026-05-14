@@ -7,26 +7,26 @@ import {
   InlineKeyboard,
 } from "grammy";
 
-import { Paths } from "../shared/Paths.ts";
+import { Paths } from "../shared/Paths";
 import {
   LOGS_MODES,
   type LogsMode,
   type TelegramConfig,
   type ThinkingLevelOpt,
-} from "./config.ts";
+} from "./config";
 import {
   buildPromptWithAttachments,
   type AttachmentPrompt,
-} from "./attachments.ts";
-import { escape as escapeMarkdown } from "./markdown.ts";
-import { modelId } from "./model.ts";
+} from "./attachments";
+import { escape as escapeMarkdown } from "./markdown";
+import { modelId } from "./model";
 import {
   appendReloadConfirm,
   clearReloadConfirm,
   readReloadConfirm,
-} from "./reload.ts";
-import { Renderer, type TurnEndState } from "./Renderer.ts";
-import { SessionRegistry, type ThreadHandle } from "./SessionRegistry.ts";
+} from "./reload";
+import { Renderer, type TurnEndState } from "./Renderer";
+import { SessionRegistry, type ThreadHandle } from "./SessionRegistry";
 
 const EFFORT_MAP: Record<string, ThinkingLevelOpt> = {
   off: "off",

@@ -1,7 +1,7 @@
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 
-import { readJsonOrEmpty, writeAtomic } from "./config.ts";
+import { readJsonOrEmpty, writeAtomic } from "./config";
 
 export type ReloadConfirmEntry = {
   readonly chatId: number;

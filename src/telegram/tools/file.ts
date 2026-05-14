@@ -7,9 +7,9 @@ import { stat } from "node:fs/promises";
 import { basename } from "node:path";
 import { type Static, Type } from "typebox";
 
-import { Paths } from "../shared/Paths.ts";
-import { toHtml } from "./markdown.ts";
-import type { ThreadHandle } from "./SessionRegistry.ts";
+import { Paths } from "../../shared/Paths";
+import { toHtml } from "../markdown";
+import type { ThreadHandle } from "../SessionRegistry";
 
 const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const MAX_CAPTION_CHARS = 1024;

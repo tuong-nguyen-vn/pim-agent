@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { SessionRegistry } from "./SessionRegistry.ts";
+import { SessionRegistry } from "./SessionRegistry";
 
 export type ThreadInstructionContext = {
   readonly configDir: string;

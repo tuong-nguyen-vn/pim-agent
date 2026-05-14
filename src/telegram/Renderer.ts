@@ -2,9 +2,9 @@ import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { GrammyError, type Api } from "grammy";
 import { basename } from "node:path";
 
-import type { LogsMode } from "./config.ts";
-import { escape as escapeMarkdown, toHtml } from "./markdown.ts";
-import type { ThreadHandle } from "./SessionRegistry.ts";
+import type { LogsMode } from "./config";
+import { escape as escapeMarkdown, toHtml } from "./markdown";
+import type { ThreadHandle } from "./SessionRegistry";
 
 export type TurnEndState = "ok" | "cancelled" | "error";
 type TurnState = TurnEndState | "running";

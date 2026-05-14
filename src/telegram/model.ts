@@ -1,7 +1,7 @@
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
 
-import { FuzzyMatcher, type FuzzyCandidate } from "../shared/FuzzyMatcher.ts";
+import { FuzzyMatcher, type FuzzyCandidate } from "../shared/FuzzyMatcher";
 
 export type ModelResolveResult =
   | { readonly kind: "ok"; readonly model: Model<Api> }

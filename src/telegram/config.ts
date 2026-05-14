@@ -1,7 +1,7 @@
 import { chmod, mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { Paths } from "../shared/Paths.ts";
+import { Paths } from "../shared/Paths";
 
 export type Cli = {
   readonly token?: string;

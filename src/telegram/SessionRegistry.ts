@@ -22,10 +22,10 @@ import {
   type TelegramState,
   type ThinkingLevelOpt,
   type ThreadEntry,
-} from "./config.ts";
-import { modelId, resolveModel } from "./model.ts";
-import { buildSendFileTool } from "./sendTool.ts";
-import { loadWrappedThreadInstruction } from "./threadInstruction.ts";
+} from "./config";
+import { modelId, resolveModel } from "./model";
+import { buildSendFileTool } from "./tools/file";
+import { loadWrappedThreadInstruction } from "./threadInstruction";
 
 export type SessionKey = string;
 
