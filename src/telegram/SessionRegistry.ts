@@ -130,6 +130,18 @@ export class SessionRegistry {
     });
   }
 
+  public enqueueCommand(
+    handle: ThreadHandle,
+    work: () => Promise<void>
+  ): Promise<void> {
+    this.requireInitialized();
+    return this.enqueueWork(SessionRegistry.key(handle), work);
+  }
+
+  public peekSession(handle: ThreadHandle): AgentSession | undefined {
+    return this.sessionCache.get(SessionRegistry.key(handle))?.session;
+  }
+
   private enqueueWork(
     key: SessionKey,
     runner: () => Promise<void>

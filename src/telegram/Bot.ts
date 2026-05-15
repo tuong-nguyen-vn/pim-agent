@@ -122,7 +122,7 @@ export class Bot {
       );
 
       if (prompt.text.startsWith("/") && !prompt.options.images?.length) {
-        await this.handleCommand(handle, prompt.text);
+        await this.handleCommand(ctx, handle, prompt.text);
         return;
       }
 
@@ -197,6 +197,7 @@ export class Bot {
   }
 
   private async handleCommand(
+    ctx: Filter<Context, "message">,
     handle: ThreadHandle,
     raw: string
   ): Promise<void> {
@@ -212,13 +213,25 @@ export class Bot {
           await this.cmdCancel(handle);
           return;
         case "/clear":
-          await this.cmdClear(handle);
+          await this.runQueued(ctx, handle, () => this.cmdClear(handle));
           return;
         case "/cd":
-          await this.cmdCd(handle, args);
+          if (!args) {
+            await this.cmdCdRead(handle);
+            return;
+          }
+          await this.runQueued(ctx, handle, () =>
+            this.cmdCdWrite(handle, args)
+          );
           return;
         case "/model":
-          await this.cmdModel(handle, args);
+          if (!args) {
+            await this.cmdModelRead(handle);
+            return;
+          }
+          await this.runQueued(ctx, handle, () =>
+            this.cmdModelWrite(handle, args)
+          );
           return;
         case "/effort":
           await this.cmdEffort(handle, args);
@@ -230,7 +243,7 @@ export class Bot {
           await this.cmdLogs(handle, args);
           return;
         case "/reload":
-          await this.cmdReload(handle);
+          await this.runQueued(ctx, handle, () => this.cmdReload(handle));
           return;
         default:
           await this.sendPlain(handle, `Unknown command: ${name}`);
@@ -242,6 +255,41 @@ export class Bot {
         `⚠️ ${name} failed: ${(err as Error).message}`
       );
     }
+  }
+
+  private async runQueued(
+    ctx: Filter<Context, "message">,
+    handle: ThreadHandle,
+    work: () => Promise<void>
+  ): Promise<void> {
+    const wasBusy = this.registry.isStreaming(handle);
+    if (wasBusy) {
+      await Bot.reactSafe(ctx, "👀");
+    }
+    void this.registry.enqueueCommand(handle, async () => {
+      try {
+        await work();
+      } catch (err) {
+        console.error(`[bot] queued command failed:`, err);
+        await this.sendPlain(
+          handle,
+          `⚠️ ${(err as Error).message ?? String(err)}`
+        );
+      } finally {
+        if (wasBusy) {
+          await Bot.reactSafe(ctx, []);
+        }
+      }
+    });
+  }
+
+  private static async reactSafe(
+    ctx: Filter<Context, "message">,
+    reaction: "👀" | []
+  ): Promise<void> {
+    await ctx.react(reaction).catch((err: unknown) => {
+      console.warn(`[bot] react failed:`, err);
+    });
   }
 
   private async cmdChatId(handle: ThreadHandle): Promise<void> {
@@ -272,24 +320,17 @@ export class Bot {
     );
   }
 
-  private async cmdCd(handle: ThreadHandle, args: string): Promise<void> {
-    if (!args) {
-      const entry = this.registry.getEntry(handle);
-      const cwd = Paths.abbreviateHome(entry.cwd ?? this.config.cwd);
-      const lines = [
-        `<b>CWD</b>: <code>${escapeMarkdown(cwd)}</code>`,
-        `<b>To Change</b>: <code>/cd &lt;path&gt;</code>`,
-      ];
-      await this.sendWithFallback(handle, lines.join("\n"));
-      return;
-    }
-    if (this.registry.isStreaming(handle)) {
-      await this.sendPlain(
-        handle,
-        "Cannot /cd while a turn is in flight. /cancel first."
-      );
-      return;
-    }
+  private async cmdCdRead(handle: ThreadHandle): Promise<void> {
+    const entry = this.registry.getEntry(handle);
+    const cwd = Paths.abbreviateHome(entry.cwd ?? this.config.cwd);
+    const lines = [
+      `<b>CWD</b>: <code>${escapeMarkdown(cwd)}</code>`,
+      `<b>To Change</b>: <code>/cd &lt;path&gt;</code>`,
+    ];
+    await this.sendWithFallback(handle, lines.join("\n"));
+  }
+
+  private async cmdCdWrite(handle: ThreadHandle, args: string): Promise<void> {
     const entry = this.registry.getEntry(handle);
     const resolved = Paths.resolve(args, entry.cwd ?? this.config.cwd);
     const result = await this.registry.setThreadCwd(handle, resolved);
@@ -301,21 +342,26 @@ export class Bot {
     await this.sendWithFallback(handle, html);
   }
 
-  private async cmdModel(handle: ThreadHandle, args: string): Promise<void> {
-    if (!args) {
-      let current = "(unknown)";
-      await this.registry.enqueue(handle, async (session) => {
-        if (session.model) {
-          current = modelId(session.model);
-        }
-      });
-      const html = [
-        `<b>Model</b>: <code>${escapeMarkdown(current)}</code>`,
-        `<b>To Change</b>: <code>/model &lt;model_name&gt;</code>`,
-      ].join("\n");
-      await this.sendWithFallback(handle, html);
-      return;
+  private async cmdModelRead(handle: ThreadHandle): Promise<void> {
+    const session = this.registry.peekSession(handle);
+    let current = "(unknown)";
+    if (session?.model) {
+      current = modelId(session.model);
+    } else {
+      const entry = this.registry.getEntry(handle);
+      current = entry.model ?? this.config.model ?? "(unset)";
     }
+    const html = [
+      `<b>Model</b>: <code>${escapeMarkdown(current)}</code>`,
+      `<b>To Change</b>: <code>/model &lt;model_name&gt;</code>`,
+    ].join("\n");
+    await this.sendWithFallback(handle, html);
+  }
+
+  private async cmdModelWrite(
+    handle: ThreadHandle,
+    args: string
+  ): Promise<void> {
     const result = await this.registry.setThreadModel(handle, args);
     if (!result.ok) {
       const bullets = result.candidates
@@ -399,7 +445,8 @@ export class Bot {
 
   private async cmdUsage(handle: ThreadHandle): Promise<void> {
     const lines: string[] = [];
-    await this.registry.enqueue(handle, async (session) => {
+    const session = this.registry.peekSession(handle);
+    if (session) {
       const usage = session.getContextUsage();
       const stats = session.getSessionStats();
       if (usage) {
@@ -413,7 +460,7 @@ export class Bot {
       lines.push(
         `<b>Session Cost</b>: <code>$${(stats.cost ?? 0).toFixed(2)}</code>`
       );
-    });
+    }
     const entry = this.registry.getEntry(handle);
     lines.push(
       `<b>Cumulative Cost</b>: <code>$${(entry.cumulativeCost ?? 0).toFixed(2)}</code>`
@@ -511,12 +558,28 @@ export class Bot {
 
     if (action === CB_CLEAR_CONFIRM && keyPart) {
       const handle = SessionRegistry.parseKey(keyPart);
-      await this.registry.clearThread(handle);
-      await ctx.answerCallbackQuery({ text: "Cleared" });
-      await Bot.safeEditMessage(
-        ctx,
-        Bot.strikeOriginal(ctx, "Context window cleared.")
-      );
+      const wasBusy = this.registry.isStreaming(handle);
+      await ctx.answerCallbackQuery({
+        text: wasBusy ? "Queued — clearing after current turn" : "Cleared",
+      });
+      void this.registry.enqueueCommand(handle, async () => {
+        try {
+          await this.registry.clearThread(handle);
+          await Bot.safeEditMessage(
+            ctx,
+            Bot.strikeOriginal(ctx, "Context window cleared.")
+          );
+        } catch (err) {
+          console.error(`[bot] queued clear failed:`, err);
+          await Bot.safeEditMessage(
+            ctx,
+            Bot.strikeOriginal(
+              ctx,
+              `⚠️ clear failed: ${(err as Error).message}`
+            )
+          );
+        }
+      });
       return;
     }
     if (action === CB_CLEAR_CANCEL) {
