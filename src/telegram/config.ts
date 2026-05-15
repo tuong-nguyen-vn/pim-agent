@@ -33,7 +33,7 @@ export type ThinkingLevelOpt = (typeof THINKING_LEVELS)[number];
 export const LOGS_MODES = ["off", "tool", "text", "verbose"] as const;
 export type LogsMode = (typeof LOGS_MODES)[number];
 
-export type ThreadEntry = {
+export type ThreadSettings = {
   readonly cwd?: string;
   readonly model?: string;
   readonly thinkingLevel?: ThinkingLevelOpt;
@@ -43,7 +43,7 @@ export type ThreadEntry = {
 };
 
 export type TelegramState = {
-  threads: Record<string, ThreadEntry>;
+  threads: Record<string, ThreadSettings>;
 };
 
 const DEFAULT_DIR = Paths.expandHome("~/.pim/telegram");

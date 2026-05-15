@@ -137,7 +137,7 @@ export class Bot {
         return;
       }
 
-      void this.registry.enqueue(handle, (session) =>
+      void this.registry.enqueueMessage(handle, (session) =>
         this.handleTurn(handle, session, prompt)
       );
     });
@@ -173,9 +173,9 @@ export class Bot {
     const work = (session: AgentSession): Promise<void> =>
       this.handleTurn(handle, session, prompt);
     if (task.isolatedSession) {
-      await this.registry.enqueueIsolated(handle, work);
+      await this.registry.enqueueIsolatedMessage(handle, work);
     } else {
-      await this.registry.enqueue(handle, work);
+      await this.registry.enqueueMessage(handle, work);
     }
   }
 
@@ -323,8 +323,8 @@ export class Bot {
   }
 
   private async cmdCdRead(handle: ThreadHandle): Promise<void> {
-    const entry = this.registry.getEntry(handle);
-    const cwd = Paths.abbreviateHome(entry.cwd ?? this.config.cwd);
+    const settings = this.registry.getThreadSettings(handle);
+    const cwd = Paths.abbreviateHome(settings.cwd ?? this.config.cwd);
     const lines = [
       `<b>CWD</b>: <code>${escapeMarkdown(cwd)}</code>`,
       `<b>To Change</b>: <code>/cd &lt;path&gt;</code>`,
@@ -333,8 +333,8 @@ export class Bot {
   }
 
   private async cmdCdWrite(handle: ThreadHandle, args: string): Promise<void> {
-    const entry = this.registry.getEntry(handle);
-    const resolved = Paths.resolve(args, entry.cwd ?? this.config.cwd);
+    const settings = this.registry.getThreadSettings(handle);
+    const resolved = Paths.resolve(args, settings.cwd ?? this.config.cwd);
     const result = await this.registry.setThreadCwd(handle, resolved);
     if (!result.ok) {
       await this.sendPlain(handle, `⚠️ ${result.error}`);
@@ -345,13 +345,13 @@ export class Bot {
   }
 
   private async cmdModelRead(handle: ThreadHandle): Promise<void> {
-    const session = this.registry.peekSession(handle);
+    const session = this.registry.getCachedSession(handle);
     let current = "(unknown)";
     if (session?.model) {
       current = modelId(session.model);
     } else {
-      const entry = this.registry.getEntry(handle);
-      current = entry.model ?? this.config.model ?? "(unset)";
+      const settings = this.registry.getThreadSettings(handle);
+      current = settings.model ?? this.config.model ?? "(unset)";
     }
     const html = [
       `<b>Model</b>: <code>${escapeMarkdown(current)}</code>`,
@@ -395,8 +395,8 @@ export class Bot {
       );
       return;
     }
-    const entry = this.registry.getEntry(handle);
-    const current = entry.thinkingLevel ?? "medium";
+    const settings = this.registry.getThreadSettings(handle);
+    const current = settings.thinkingLevel ?? "medium";
     const { kb, html } = this.buildEffortPicker(handle, current, supported);
     await this.sendWithFallback(handle, html, kb);
   }
@@ -447,7 +447,7 @@ export class Bot {
 
   private async cmdUsage(handle: ThreadHandle): Promise<void> {
     const lines: string[] = [];
-    const session = this.registry.peekSession(handle);
+    const session = this.registry.getCachedSession(handle);
     if (session) {
       const usage = session.getContextUsage();
       const stats = session.getSessionStats();
@@ -463,16 +463,16 @@ export class Bot {
         `<b>Session Cost</b>: <code>$${(stats.cost ?? 0).toFixed(2)}</code>`
       );
     }
-    const entry = this.registry.getEntry(handle);
+    const settings = this.registry.getThreadSettings(handle);
     lines.push(
-      `<b>Cumulative Cost</b>: <code>$${(entry.cumulativeCost ?? 0).toFixed(2)}</code>`
+      `<b>Cumulative Cost</b>: <code>$${(settings.cumulativeCost ?? 0).toFixed(2)}</code>`
     );
     await this.sendWithFallback(handle, lines.join("\n"));
   }
 
   private async cmdLogs(handle: ThreadHandle, _args: string): Promise<void> {
-    const entry = this.registry.getEntry(handle);
-    const current = entry.logsMode ?? "text";
+    const settings = this.registry.getThreadSettings(handle);
+    const current = settings.logsMode ?? "text";
     const { kb, html } = this.buildLogsPicker(handle, current);
     await this.sendWithFallback(handle, html, kb);
   }
@@ -601,11 +601,11 @@ export class Bot {
     session: AgentSession,
     prompt: AttachmentPrompt
   ): Promise<void> {
-    const entry = this.registry.getEntry(handle);
+    const settings = this.registry.getThreadSettings(handle);
     const renderer = new Renderer({
       api: this.grammy.api,
       handle,
-      logsMode: entry.logsMode ?? "text",
+      logsMode: settings.logsMode ?? "text",
     });
     const unsubscribe = session.subscribe((event) =>
       renderer.handleEvent(event)

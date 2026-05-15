@@ -22,7 +22,7 @@ import {
   type TelegramConfig,
   type TelegramState,
   type ThinkingLevelOpt,
-  type ThreadEntry,
+  type ThreadSettings,
 } from "./config";
 import { modelId, resolveModel } from "./model";
 import { buildSendFileTool } from "./files/tool";
@@ -39,7 +39,7 @@ export type ThreadHandle = {
 
 type WorkQueue = Promise<void>;
 
-type TelegramSession = {
+type CachedSession = {
   readonly handle: ThreadHandle;
   readonly session: AgentSession;
   readonly promptRef: { wrapped: string | undefined };
@@ -56,7 +56,7 @@ export class SessionRegistry {
   private readonly api: Api;
   private readonly scheduler: Scheduler;
   private readonly workQueues = new Map<SessionKey, WorkQueue>();
-  private readonly sessionCache = new Map<SessionKey, TelegramSession>();
+  private readonly sessionCache = new Map<SessionKey, CachedSession>();
   private readonly authStorage: AuthStorage;
   private readonly modelRegistry: ModelRegistry;
   private readonly settingsManagers = new Map<string, SettingsManager>();
@@ -119,13 +119,13 @@ export class SessionRegistry {
     }
   }
 
-  public enqueue(
+  public enqueueMessage(
     handle: ThreadHandle,
     work: (session: AgentSession) => Promise<void>
   ): Promise<void> {
     this.requireInitialized();
     return this.enqueueWork(SessionRegistry.key(handle), async () => {
-      const session = await this.getOrCreate(handle);
+      const session = await this.loadSession(handle);
       await work(session);
     });
   }
@@ -138,7 +138,7 @@ export class SessionRegistry {
     return this.enqueueWork(SessionRegistry.key(handle), work);
   }
 
-  public peekSession(handle: ThreadHandle): AgentSession | undefined {
+  public getCachedSession(handle: ThreadHandle): AgentSession | undefined {
     return this.sessionCache.get(SessionRegistry.key(handle))?.session;
   }
 
@@ -160,7 +160,7 @@ export class SessionRegistry {
     return next;
   }
 
-  public getEntry(handle: ThreadHandle): ThreadEntry {
+  public getThreadSettings(handle: ThreadHandle): ThreadSettings {
     this.requireInitialized();
     return this.state.threads[SessionRegistry.key(handle)] ?? {};
   }
@@ -173,11 +173,11 @@ export class SessionRegistry {
   }
 
   public async cancel(handle: ThreadHandle): Promise<boolean> {
-    const live = this.sessionCache.get(SessionRegistry.key(handle));
-    if (!live || !live.session.isStreaming) {
+    const cached = this.sessionCache.get(SessionRegistry.key(handle));
+    if (!cached || !cached.session.isStreaming) {
       return false;
     }
-    await live.session.abort();
+    await cached.session.abort();
     return true;
   }
 
@@ -201,8 +201,11 @@ export class SessionRegistry {
       return { ok: false, error: `stat failed: ${(err as Error).message}` };
     }
     const key = SessionRegistry.key(handle);
-    await this.evictAndArchive(key);
-    await this.patchEntry(key, { cwd: newCwd, sessionPath: undefined });
+    await this.tearDownSession(key);
+    await this.persistThreadSettings(key, {
+      cwd: newCwd,
+      sessionPath: undefined,
+    });
     return { ok: true };
   }
 
@@ -231,10 +234,10 @@ export class SessionRegistry {
     if (this.state.threads[key]?.model === id) {
       return { ok: true, id };
     }
-    await this.patchEntry(key, { model: id });
-    const live = this.sessionCache.get(key);
-    if (live) {
-      await live.session.setModel(result.model);
+    await this.persistThreadSettings(key, { model: id });
+    const cached = this.sessionCache.get(key);
+    if (cached) {
+      await cached.session.setModel(result.model);
     }
     return { ok: true, id };
   }
@@ -243,8 +246,8 @@ export class SessionRegistry {
     handle: ThreadHandle
   ): readonly ThinkingLevelOpt[] {
     this.requireInitialized();
-    const entry = this.state.threads[SessionRegistry.key(handle)] ?? {};
-    const mid = entry.model ?? this.config.model;
+    const settings = this.state.threads[SessionRegistry.key(handle)] ?? {};
+    const mid = settings.model ?? this.config.model;
     if (!mid) {
       return [];
     }
@@ -264,10 +267,10 @@ export class SessionRegistry {
     if (this.state.threads[key]?.thinkingLevel === level) {
       return;
     }
-    await this.patchEntry(key, { thinkingLevel: level });
-    const live = this.sessionCache.get(key);
-    if (live) {
-      live.session.setThinkingLevel(level as ThinkingLevel);
+    await this.persistThreadSettings(key, { thinkingLevel: level });
+    const cached = this.sessionCache.get(key);
+    if (cached) {
+      cached.session.setThinkingLevel(level as ThinkingLevel);
     }
   }
 
@@ -280,7 +283,7 @@ export class SessionRegistry {
     if (this.state.threads[key]?.logsMode === logsMode) {
       return;
     }
-    await this.patchEntry(key, { logsMode });
+    await this.persistThreadSettings(key, { logsMode });
   }
 
   public async steerIfStreaming(
@@ -288,11 +291,11 @@ export class SessionRegistry {
     text: string,
     options: Pick<PromptOptions, "images">
   ): Promise<boolean> {
-    const live = this.sessionCache.get(SessionRegistry.key(handle));
-    if (!live?.session.isStreaming) {
+    const cached = this.sessionCache.get(SessionRegistry.key(handle));
+    if (!cached?.session.isStreaming) {
       return false;
     }
-    await live.session.prompt(text, {
+    await cached.session.prompt(text, {
       ...options,
       streamingBehavior: "steer",
       source: "rpc",
@@ -303,8 +306,8 @@ export class SessionRegistry {
   public async clearThread(handle: ThreadHandle): Promise<void> {
     this.requireInitialized();
     const key = SessionRegistry.key(handle);
-    await this.evictAndArchive(key);
-    await this.patchEntry(key, { sessionPath: undefined });
+    await this.tearDownSession(key);
+    await this.persistThreadSettings(key, { sessionPath: undefined });
   }
 
   public async disposeAll(): Promise<void> {
@@ -312,9 +315,9 @@ export class SessionRegistry {
       p.catch(() => {})
     );
     await Promise.all(pending);
-    for (const live of this.sessionCache.values()) {
-      live.unsubscribe();
-      live.session.dispose();
+    for (const cached of this.sessionCache.values()) {
+      cached.unsubscribe();
+      cached.session.dispose();
     }
     this.sessionCache.clear();
     this.workQueues.clear();
@@ -327,9 +330,9 @@ export class SessionRegistry {
     return join(this.config.configDir, "sessions", `${key}.jsonl`);
   }
 
-  private async patchEntry(
+  private async persistThreadSettings(
     key: SessionKey,
-    patch: Partial<ThreadEntry>
+    patch: Partial<ThreadSettings>
   ): Promise<void> {
     this.requireInitialized();
     const prev = this.state.threads[key] ?? {};
@@ -345,11 +348,11 @@ export class SessionRegistry {
     }
   }
 
-  private async evictAndArchive(key: SessionKey): Promise<void> {
-    const live = this.sessionCache.get(key);
-    if (live) {
-      live.unsubscribe();
-      live.session.dispose();
+  private async tearDownSession(key: SessionKey): Promise<void> {
+    const cached = this.sessionCache.get(key);
+    if (cached) {
+      cached.unsubscribe();
+      cached.session.dispose();
       this.sessionCache.delete(key);
     }
     const prev = this.state.threads[key];
@@ -364,34 +367,34 @@ export class SessionRegistry {
     }
   }
 
-  private async getOrCreate(handle: ThreadHandle): Promise<AgentSession> {
+  private async loadSession(handle: ThreadHandle): Promise<AgentSession> {
     this.requireInitialized();
     const key = SessionRegistry.key(handle);
-    const existing = this.sessionCache.get(key);
-    if (existing) {
-      existing.lastUsed = Date.now();
+    const cached = this.sessionCache.get(key);
+    if (cached) {
+      cached.lastUsed = Date.now();
       const wrapped = await loadWrappedThreadInstruction({
         configDir: this.config.configDir,
         chatId: handle.chatId,
         threadId: handle.threadId,
       });
-      if (existing.promptRef.wrapped !== wrapped) {
-        existing.promptRef.wrapped = wrapped;
-        await existing.session.reload();
+      if (cached.promptRef.wrapped !== wrapped) {
+        cached.promptRef.wrapped = wrapped;
+        await cached.session.reload();
       }
-      return existing.session;
+      return cached.session;
     }
 
     this.evictIfNeeded();
 
-    const entry = this.state.threads[key] ?? {};
-    const sessionPath = entry.sessionPath ?? this.defaultSessionPath(key);
+    const settings = this.state.threads[key] ?? {};
+    const sessionPath = settings.sessionPath ?? this.defaultSessionPath(key);
     const { session, cwd, promptRef } = await this.buildAgentSession(
       handle,
       sessionPath
     );
 
-    const live: TelegramSession = {
+    const entry: CachedSession = {
       handle,
       session,
       promptRef,
@@ -399,26 +402,26 @@ export class SessionRegistry {
       lastUsed: Date.now(),
       lastTurnCost: session.getSessionStats().cost ?? 0,
     };
-    live.unsubscribe = session.subscribe((event) => {
+    entry.unsubscribe = session.subscribe((event) => {
       if (event.type !== "turn_end") {
         return;
       }
       const total = session.getSessionStats().cost ?? 0;
-      const delta = total - live.lastTurnCost;
+      const delta = total - entry.lastTurnCost;
       if (delta <= 0) {
         return;
       }
-      live.lastTurnCost = total;
-      const prevEntry = this.state.threads[key] ?? {};
+      entry.lastTurnCost = total;
+      const prevSettings = this.state.threads[key] ?? {};
       this.state.threads[key] = {
-        ...prevEntry,
-        cumulativeCost: (prevEntry.cumulativeCost ?? 0) + delta,
+        ...prevSettings,
+        cumulativeCost: (prevSettings.cumulativeCost ?? 0) + delta,
       };
       void this.flushState();
     });
-    this.sessionCache.set(key, live);
+    this.sessionCache.set(key, entry);
 
-    await this.patchEntry(key, { cwd, sessionPath });
+    await this.persistThreadSettings(key, { cwd, sessionPath });
 
     return session;
   }
@@ -432,8 +435,8 @@ export class SessionRegistry {
     readonly promptRef: { wrapped: string | undefined };
   }> {
     const key = SessionRegistry.key(handle);
-    const entry = this.state.threads[key] ?? {};
-    const cwd = entry.cwd ?? this.config.cwd;
+    const settings = this.state.threads[key] ?? {};
+    const cwd = settings.cwd ?? this.config.cwd;
     const sessionManager = SessionManager.open(sessionPath, undefined, cwd);
     const settingsManager = this.settingsManagerFor(cwd);
     const wrapped = await loadWrappedThreadInstruction({
@@ -453,7 +456,7 @@ export class SessionRegistry {
     });
     await loader.reload();
 
-    const defaultModelId = entry.model ?? this.config.model;
+    const defaultModelId = settings.model ?? this.config.model;
     let model;
     if (defaultModelId) {
       const resolved = resolveModel(this.modelRegistry, defaultModelId);
@@ -478,14 +481,14 @@ export class SessionRegistry {
       resourceLoader: loader,
       sessionManager,
       model,
-      thinkingLevel: entry.thinkingLevel as ThinkingLevel | undefined,
+      thinkingLevel: settings.thinkingLevel as ThinkingLevel | undefined,
       customTools: [sendFile, taskTool],
     });
 
     return { session, cwd, promptRef };
   }
 
-  public enqueueIsolated(
+  public enqueueIsolatedMessage(
     handle: ThreadHandle,
     work: (session: AgentSession) => Promise<void>
   ): Promise<void> {
