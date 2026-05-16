@@ -379,7 +379,7 @@ export class Bot {
       );
       return;
     }
-    const current = session.settings.thinkingLevel ?? "medium";
+    const current = session.currentThinkingLevel;
     const { kb, html } = this.buildEffortPicker(session.id, current, supported);
     await this.sendWithFallback(session.id, html, kb);
   }

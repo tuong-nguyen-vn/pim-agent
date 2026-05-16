@@ -122,6 +122,18 @@ export class Session {
     return piGetSupportedThinkingLevels(model) as ThinkingLevelOpt[];
   }
 
+  public get currentThinkingLevel(): ThinkingLevelOpt {
+    if (this.currentSettings.thinkingLevel) {
+      return this.currentSettings.thinkingLevel;
+    }
+    if (this.cached) {
+      return this.cached.thinkingLevel as ThinkingLevelOpt;
+    }
+    const cwd = this.currentSettings.cwd ?? this.deps.config.cwd;
+    const sm = this.deps.settingsManagerFor(cwd);
+    return (sm.getDefaultThinkingLevel() as ThinkingLevelOpt) ?? "medium";
+  }
+
   /**
    * Run `work` as a turn against this session's agent. Serialized: turns for
    * the same `SessionId` execute one at a time in the order they were
