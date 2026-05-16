@@ -8,7 +8,6 @@ import {
 } from "grammy";
 
 import { Paths } from "../shared/Paths";
-import { Attachment, type AttachmentPrompt } from "./Attachment";
 import {
   LOGS_MODES,
   THINKING_LEVELS,
@@ -17,6 +16,7 @@ import {
   type ThinkingLevelOpt,
 } from "./Config";
 import { Markdown } from "./Markdown";
+import { Message, type Prompt } from "./Message";
 import { Renderer, type TurnEndState } from "./Renderer";
 import { Session, type SessionId } from "./Session";
 import { SessionRegistry } from "./SessionRegistry";
@@ -107,9 +107,9 @@ export class Bot {
         chatId,
         threadId: ctx.message.message_thread_id,
       };
-      let prompt: AttachmentPrompt | undefined;
+      let prompt: Prompt | undefined;
       try {
-        prompt = await Attachment.fromMessage(
+        prompt = await Message.toPrompt(
           ctx,
           this.config.token,
           this.config.configDir,
@@ -165,7 +165,7 @@ export class Bot {
       chatId: task.chatId,
       threadId: task.threadId,
     };
-    const prompt: AttachmentPrompt = { text: task.prompt, options: {} };
+    const prompt: Prompt = { text: task.prompt, options: {} };
     const session = this.registry.get(sessionId);
     await session.run(
       (agent) => this.handleTurn(session, agent, prompt),
@@ -668,7 +668,7 @@ export class Bot {
   private async handleTurn(
     session: Session,
     agent: AgentSession,
-    prompt: AttachmentPrompt
+    prompt: Prompt
   ): Promise<void> {
     const renderer = new Renderer(session, this.grammy.api);
     const unsubscribe = agent.subscribe((event) => renderer.handleEvent(event));

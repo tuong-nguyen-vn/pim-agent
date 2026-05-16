@@ -5,7 +5,7 @@ import { basename, extname, join } from "node:path";
 
 import type { SessionId } from "./Session";
 
-type AttachmentFile = {
+type DownloadedFile = {
   readonly path: string;
   readonly mimeType: string;
   readonly imageBase64: string | undefined;
@@ -19,24 +19,26 @@ type FileRef = {
   readonly ext: string;
 };
 
-export type AttachmentPrompt = {
+export type Prompt = {
   readonly text: string;
   readonly options: Pick<PromptOptions, "images">;
 };
 
 const IMAGE_BYTES_LIMIT = 4 * 1024 * 1024;
+const REPLY_QUOTE_HEAD = 128;
+const REPLY_QUOTE_TAIL = 128;
 
-export class Attachment {
-  public static async fromMessage(
+export class Message {
+  public static async toPrompt(
     ctx: Filter<Context, "message">,
     token: string,
     configDir: string,
     sessionId: SessionId
-  ): Promise<AttachmentPrompt | undefined> {
+  ): Promise<Prompt | undefined> {
     const message = ctx.message;
     const text = ("text" in message ? message.text : undefined) ?? "";
     const caption = ("caption" in message ? message.caption : undefined) ?? "";
-    const files = await Attachment.download(ctx, token, configDir, sessionId);
+    const files = await Message.download(ctx, token, configDir, sessionId);
 
     const attachments: string[] = [];
     const images: NonNullable<PromptOptions["images"]> = [];
@@ -54,14 +56,42 @@ export class Attachment {
     }
 
     const body = (text || caption || "").trim();
-    const prompt = [body, ...attachments].filter(Boolean).join("\n\n").trim();
-    if (!prompt && images.length === 0) {
-      return undefined;
-    }
+    const replyContext = Message.buildReplyContext(ctx);
+    const promptText = [replyContext, body, ...attachments]
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
     return {
-      text: prompt || "Please analyze the attached image.",
+      text: promptText,
       options: images.length > 0 ? { images } : {},
     };
+  }
+
+  private static buildReplyContext(
+    ctx: Filter<Context, "message">
+  ): string | undefined {
+    const reply = ctx.message.reply_to_message;
+    if (!reply) {
+      return undefined;
+    }
+    const raw = ctx.message.quote?.text ?? reply.text ?? reply.caption ?? "";
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const truncated =
+      trimmed.length > REPLY_QUOTE_HEAD + REPLY_QUOTE_TAIL + 1
+        ? `${trimmed.slice(0, REPLY_QUOTE_HEAD)}…${trimmed.slice(-REPLY_QUOTE_TAIL)}`
+        : trimmed;
+    const quoted = truncated
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+    const isFromBot = reply.from?.id === ctx.me.id;
+    const label = isFromBot
+      ? "Replying to your earlier message:"
+      : "Replying to my earlier message:";
+    return `${label}\n${quoted}`;
   }
 
   private static async download(
@@ -69,15 +99,15 @@ export class Attachment {
     token: string,
     configDir: string,
     sessionId: SessionId
-  ): Promise<ReadonlyArray<AttachmentFile>> {
-    const refs = Attachment.refs(ctx);
+  ): Promise<ReadonlyArray<DownloadedFile>> {
+    const refs = Message.refs(ctx);
     if (refs.length === 0) {
       return [];
     }
 
     const dir = join(configDir, "attachments", String(sessionId.chatId));
     await mkdir(dir, { recursive: true });
-    const out: AttachmentFile[] = [];
+    const out: DownloadedFile[] = [];
     for (const ref of refs) {
       const telegramFile = await ctx.api.getFile(ref.fileId);
       if (!telegramFile.file_path) {
@@ -90,7 +120,7 @@ export class Attachment {
       }
       const ext =
         extname(telegramFile.file_path) || extname(ref.name ?? "") || ref.ext;
-      const filename = Attachment.safeName(
+      const filename = Message.safeName(
         `${ref.uniqueId ?? ref.fileId}-${Date.now()}${ext}`
       );
       const path = join(dir, filename);
