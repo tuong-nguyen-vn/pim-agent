@@ -30,6 +30,21 @@ const CB_EFFORT = "effort";
 const CB_LOGS = "logs";
 const CB_MODEL = "model";
 
+type BotCommand = { readonly command: string; readonly description: string };
+
+const BOT_COMMANDS: readonly BotCommand[] = [
+  { command: "chatid", description: "Show this chat's numeric ID" },
+  { command: "cancel", description: "Cancel the current turn" },
+  { command: "clear", description: "Reset chat history and context window" },
+  { command: "cd", description: "Show or change the working directory" },
+  { command: "model", description: "Show or change the AI model" },
+  { command: "effort", description: "Show or change thinking effort level" },
+  { command: "usage", description: "Show context window and session cost" },
+  { command: "logs", description: "Show or change log verbosity" },
+  { command: "update", description: "Update the bot to the latest version" },
+  { command: "commands", description: "Register all commands with Telegram" },
+];
+
 const LOGS_DESCRIPTIONS: Record<LogsMode, string> = {
   off: "final message only",
   tool: "show tool use",
@@ -225,6 +240,9 @@ export class Bot {
           return;
         case "/update":
           await this.runQueued(ctx, session, () => this.cmdUpdate(session));
+          return;
+        case "/commands":
+          await this.cmdCommands(session);
           return;
         default:
           await this.sendPlain(session.id, `Unknown command: ${name}`);
@@ -461,6 +479,66 @@ export class Bot {
       messageId: sent.message_id,
     });
     Supervisor.restart();
+  }
+
+  private async cmdCommands(session: Session): Promise<void> {
+    const chatId = session.id.chatId;
+    try {
+      const globalScopes = [
+        { type: "default" as const },
+        { type: "all_private_chats" as const },
+        { type: "all_group_chats" as const },
+      ];
+      await Promise.all(
+        globalScopes.map((scope) =>
+          this.grammy.api.setMyCommands(BOT_COMMANDS, { scope })
+        )
+      );
+
+      // Clear stale chat-scoped overrides so the global set resolves here.
+      await this.grammy.api.deleteMyCommands({
+        scope: { type: "chat", chat_id: chatId },
+      });
+      try {
+        await this.grammy.api.deleteMyCommands({
+          scope: { type: "chat_administrators", chat_id: chatId },
+        });
+      } catch {
+        // chat_administrators scope is only valid for group chats.
+      }
+
+      const chat = await this.grammy.api.getChat(chatId);
+      const resolvedScope =
+        chat.type === "private"
+          ? ({ type: "all_private_chats" } as const)
+          : ({ type: "all_group_chats" } as const);
+      const actual = await this.grammy.api.getMyCommands({
+        scope: resolvedScope,
+      });
+      const actualMap = new Set(actual.map((c) => c.command));
+      const lines = [
+        "✅ <b>Commands registered</b> and chat-scoped overrides cleared:",
+        "",
+        ...BOT_COMMANDS.map((c) => {
+          const ok = actualMap.has(c.command) ? "✅" : "❌";
+          return `${ok} <code>/${c.command}</code> — ${Markdown.escape(c.description)}`;
+        }),
+      ];
+      if (actual.length !== BOT_COMMANDS.length) {
+        lines.push(
+          "",
+          `⚠️ <b>${BOT_COMMANDS.length}</b> sent but <b>${actual.length}</b> resolved for this chat. Restart Telegram if commands don't show in autocomplete.`
+        );
+      }
+      await this.sendWithFallback(session.id, lines.join("\n"));
+    } catch (err) {
+      const msg = (err as Error).message ?? String(err);
+      console.error("[bot] setMyCommands failed:", err);
+      await this.sendPlain(
+        session.id,
+        `⚠️ Failed to register commands: ${Markdown.escape(msg)}`
+      );
+    }
   }
 
   private async handleCallback(
