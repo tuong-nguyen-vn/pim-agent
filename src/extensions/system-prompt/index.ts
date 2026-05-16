@@ -3,7 +3,7 @@ import { formatSkillsForPrompt } from "@earendil-works/pi-coding-agent";
 import { buildSystemPrompt } from "./prompt";
 
 export default function (pi: ExtensionAPI): void {
-  pi.on("before_agent_start", (event) => {
+  pi.on("before_agent_start", (event, ctx) => {
     const {
       cwd,
       contextFiles,
@@ -14,6 +14,7 @@ export default function (pi: ExtensionAPI): void {
     } = event.systemPromptOptions;
     return {
       systemPrompt: buildSystemPrompt({
+        model: ctx.model,
         cwd,
         contextFiles: contextFiles ?? [],
         skillsBlock:

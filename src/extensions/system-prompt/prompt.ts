@@ -1,4 +1,7 @@
+import { ExtensionContext } from "@earendil-works/pi-coding-agent";
+
 type BuildOptions = {
+  readonly model?: ExtensionContext["model"];
   readonly cwd: string;
   readonly contextFiles: ReadonlyArray<{
     readonly path: string;
@@ -37,11 +40,15 @@ export function buildSystemPrompt(opts: BuildOptions): string {
     );
   }
 
+  const model = opts.model
+    ? `${opts.model.id} via ${opts.model.provider}`
+    : "unknown";
   sections.push(
     [
       "<environment>",
       `- cwd: ${opts.cwd}`,
       `- platform: ${process.platform}`,
+      `- model: ${model}`,
       `- datetime: ${formatDatetime(new Date())}`,
       "</environment>",
     ].join("\n")
