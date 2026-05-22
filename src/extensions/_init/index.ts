@@ -1,4 +1,7 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 
 const SPLASH_ID = "pim-splash";
 
@@ -66,9 +69,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     splashShown = true;
   });
 
-  const clearSplash = (ctx: {
-    ui: { setWidget: (id: string, content: undefined) => void };
-  }) => {
+  const clearSplash = (ctx: ExtensionContext) => {
     if (splashShown) {
       ctx.ui.setWidget(SPLASH_ID, undefined);
       splashShown = false;

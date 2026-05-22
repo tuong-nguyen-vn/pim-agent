@@ -1,4 +1,4 @@
-import { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 type BuildOptions = {
   readonly model?: ExtensionContext["model"];
