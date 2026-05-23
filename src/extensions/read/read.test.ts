@@ -2,8 +2,10 @@ import { chmod, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import { MAX_LINE_LENGTH } from "./schema";
+import { OutputBudget } from "../../shared/OutputBudget";
 import { buildReadRange, readFile } from "./read";
+
+const MAX_LINE_LENGTH = OutputBudget.maxLineLength;
 
 const tempRoot = (): Promise<string> =>
   mkdtemp(join(tmpdir(), "pim-read-tool-"));

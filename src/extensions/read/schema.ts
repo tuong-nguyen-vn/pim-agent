@@ -1,8 +1,5 @@
 import { type Static, Type } from "typebox";
 
-export const MAX_READ_BYTES = 32 * 1024;
-export const MAX_LINE_LENGTH = 2000;
-
 export const readSchema = Type.Object({
   path: Type.String({
     description: "Absolute or relative path to file (resolved against cwd).",

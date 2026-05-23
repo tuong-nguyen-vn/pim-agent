@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  clampMaxBytes,
-  formatOutcome,
-  truncateUtf8,
-  validatePublicUrl,
-} from "./fetch";
+import { clampMaxBytes, formatOutcome, validatePublicUrl } from "./fetch";
 import {
   DEFAULT_FETCH_BYTES,
   MAX_FETCH_BYTES,
@@ -73,51 +68,6 @@ describe("validatePublicUrl", () => {
 
   test("accepts public IPs", () => {
     expect(validatePublicUrl("http://8.8.8.8/")).toBe("http://8.8.8.8/");
-  });
-});
-
-describe("truncateUtf8", () => {
-  test("returns content unchanged when under cap", () => {
-    const result = truncateUtf8("hello", 1024);
-    expect(result.body).toBe("hello");
-    expect(result.truncated).toBe(false);
-    expect(result.totalBytes).toBe(5);
-    expect(result.returnedBytes).toBe(5);
-  });
-
-  test("truncates ASCII at exact byte boundary", () => {
-    const content = "a".repeat(100);
-    const result = truncateUtf8(content, 10);
-    expect(result.body).toBe("a".repeat(10));
-    expect(result.truncated).toBe(true);
-    expect(result.totalBytes).toBe(100);
-    expect(result.returnedBytes).toBe(10);
-  });
-
-  test("backs off to a UTF-8 boundary mid-codepoint", () => {
-    // "é" is 2 bytes (0xc3 0xa9). Cap of 1 byte must back off to 0.
-    const result = truncateUtf8("é", 1);
-    expect(result.body).toBe("");
-    expect(result.returnedBytes).toBe(0);
-    expect(result.truncated).toBe(true);
-    expect(result.totalBytes).toBe(2);
-  });
-
-  test("preserves complete multi-byte chars", () => {
-    // "héllo" — h(1) + é(2) + llo(3) = 6 bytes. Cap of 3 = "hé".
-    const result = truncateUtf8("héllo", 3);
-    expect(result.body).toBe("hé");
-    expect(result.returnedBytes).toBe(3);
-    expect(result.truncated).toBe(true);
-    expect(result.totalBytes).toBe(6);
-  });
-
-  test("backs off across a 4-byte sequence", () => {
-    // "🦀" = 4 bytes. Cap 2 must back off all the way.
-    const result = truncateUtf8("🦀x", 2);
-    expect(result.body).toBe("");
-    expect(result.returnedBytes).toBe(0);
-    expect(result.truncated).toBe(true);
   });
 });
 

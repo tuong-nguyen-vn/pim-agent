@@ -1,6 +1,7 @@
 import { FsErrors } from "../../shared/FsErrors";
 import { Lines } from "../../shared/Lines";
-import { MAX_LINE_LENGTH, MAX_READ_BYTES, type ReadRange } from "./schema";
+import { OutputBudget } from "../../shared/OutputBudget";
+import type { ReadRange } from "./schema";
 
 type RenderedLine = {
   readonly lineNumber: number;
@@ -107,7 +108,7 @@ function renderText(
 
   if (firstLineTooBig !== undefined) {
     throw new Error(
-      `Line ${firstLineTooBig.line} is ${formatBytes(firstLineTooBig.bytes)}, exceeds the ${formatBytes(MAX_READ_BYTES)} read cap. Use bash: sed -n '${firstLineTooBig.line}p' ${path} | head -c ${MAX_READ_BYTES}${range.start < totalLines ? `, or call read again with start=${range.start + 1} to skip this line.` : "."}`
+      `Line ${firstLineTooBig.line} is ${formatBytes(firstLineTooBig.bytes)}, exceeds the ${formatBytes(OutputBudget.maxBytes)} read cap. Use bash: sed -n '${firstLineTooBig.line}p' ${path} | head -c ${OutputBudget.maxBytes}${range.start < totalLines ? `, or call read again with start=${range.start + 1} to skip this line.` : "."}`
     );
   }
 
@@ -136,7 +137,7 @@ function renderLines(
   const rendered: RenderedLine[] = [];
 
   for (let lineNumber = start; lineNumber <= end; lineNumber += 1) {
-    const line = truncateLine(lines[lineNumber - 1] ?? "");
+    const line = OutputBudget.truncateLine(lines[lineNumber - 1] ?? "");
     rendered.push({
       lineNumber,
       text: `${lineNumber}:${line}`,
@@ -144,14 +145,6 @@ function renderLines(
   }
 
   return rendered;
-}
-
-function truncateLine(line: string): string {
-  if (line.length <= MAX_LINE_LENGTH) {
-    return line;
-  }
-
-  return `${line.slice(0, MAX_LINE_LENGTH)}... (line truncated to ${MAX_LINE_LENGTH} chars)`;
 }
 
 function applyByteCap(lines: readonly RenderedLine[]): {
@@ -167,7 +160,7 @@ function applyByteCap(lines: readonly RenderedLine[]): {
     const separatorBytes = visible.length === 0 ? 0 : 1;
     const lineBytes = Buffer.byteLength(line.text, "utf8");
 
-    if (visible.length === 0 && lineBytes > MAX_READ_BYTES) {
+    if (visible.length === 0 && lineBytes > OutputBudget.maxBytes) {
       return {
         visible,
         firstLineTooBig: { line: line.lineNumber, bytes: lineBytes },
@@ -176,7 +169,7 @@ function applyByteCap(lines: readonly RenderedLine[]): {
 
     if (
       visible.length > 0 &&
-      bytes + separatorBytes + lineBytes > MAX_READ_BYTES
+      bytes + separatorBytes + lineBytes > OutputBudget.maxBytes
     ) {
       break;
     }

@@ -1,3 +1,4 @@
+import { OutputBudget } from "../../shared/OutputBudget";
 import { Paths } from "../../shared/Paths";
 import type { GlobMatch } from "./glob";
 import type { GlobPathFormat } from "./schema";
@@ -29,8 +30,9 @@ export function renderFiles(
   }
 
   const lines = matches.map((match) => formatPath(match.path, options));
-  const visible = lines.slice(0, headLimit);
-  const truncated = lines.length > headLimit;
+  const headCapped = lines.slice(0, headLimit);
+  const { visible } = OutputBudget.applyByteCap(headCapped);
+  const truncated = visible.length < lines.length;
 
   return {
     body: visible.join("\n"),

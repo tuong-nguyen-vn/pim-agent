@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { OutputBudget } from "../../shared/OutputBudget";
 import type { JinaReaderClient } from "./JinaReaderClient";
 import {
   DEFAULT_FETCH_BYTES,
@@ -56,46 +57,13 @@ export function validatePublicUrl(value: string): string {
   return url.href;
 }
 
-export function truncateUtf8(
-  content: string,
-  maxBytes: number
-): {
-  readonly body: string;
-  readonly returnedBytes: number;
-  readonly totalBytes: number;
-  readonly truncated: boolean;
-} {
-  const totalBytes = Buffer.byteLength(content, "utf8");
-
-  if (totalBytes <= maxBytes) {
-    return {
-      body: content,
-      returnedBytes: totalBytes,
-      totalBytes,
-      truncated: false,
-    };
-  }
-
-  const encoded = new TextEncoder().encode(content);
-  let cut = maxBytes;
-  while (cut > 0 && ((encoded[cut] ?? 0) & 0xc0) === 0x80) {
-    cut -= 1;
-  }
-
-  const body = new TextDecoder("utf-8").decode(encoded.subarray(0, cut));
-
-  return { body, returnedBytes: cut, totalBytes, truncated: true };
-}
-
 export function formatOutcome(
   page: WebFetchPage,
   maxBytes: number,
   format: WebFetchResolvedFormat
 ): WebFetchOutcome {
-  const { body, returnedBytes, totalBytes, truncated } = truncateUtf8(
-    page.content,
-    maxBytes
-  );
+  const { body, returnedBytes, totalBytes, truncated } =
+    OutputBudget.truncateUtf8(page.content, maxBytes);
 
   const lines = [
     `title: ${page.title}`,

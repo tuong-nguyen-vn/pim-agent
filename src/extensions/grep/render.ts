@@ -1,3 +1,4 @@
+import { OutputBudget } from "../../shared/OutputBudget";
 import { Paths } from "../../shared/Paths";
 import type { GrepLineRange, GrepMatch } from "./grep";
 import type { GrepOutputMode, GrepPathFormat } from "./schema";
@@ -58,8 +59,9 @@ export function renderMatches(
     };
   }
 
-  const visible = lines.slice(0, headLimit);
-  const truncated = lines.length > headLimit;
+  const headCapped = lines.slice(0, headLimit);
+  const { visible } = OutputBudget.applyByteCap(headCapped);
+  const truncated = visible.length < lines.length;
 
   return {
     body: visible.join("\n"),
@@ -119,7 +121,7 @@ function renderContent(
   return byRecency(matches).flatMap((match) =>
     match.lines.map(
       (line) =>
-        `${formatPath(match.filePath, options)}:${line.lineNumber}:${line.text}`
+        `${formatPath(match.filePath, options)}:${line.lineNumber}:${OutputBudget.truncateLine(line.text)}`
     )
   );
 }
@@ -147,9 +149,10 @@ function renderContextContent(
       lineNumber += 1
     ) {
       const marker = isMatchLine(match.ranges, lineNumber) ? ">" : " ";
-      lines.push(
-        `${marker} ${path}:${lineNumber}:${match.fileLines[lineNumber - 1] ?? ""}`
+      const text = OutputBudget.truncateLine(
+        match.fileLines[lineNumber - 1] ?? ""
       );
+      lines.push(`${marker} ${path}:${lineNumber}:${text}`);
     }
   }
 

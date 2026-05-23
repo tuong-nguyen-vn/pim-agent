@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { OutputBudget } from "../../shared/OutputBudget";
 import type { GrepMatch } from "./grep";
 import { formatTitle, renderMatches } from "./render";
 
@@ -141,6 +142,65 @@ describe("renderMatches", () => {
     expect(outcome.truncated).toBe(false);
     expect(outcome.fileCount).toBe(0);
     expect(outcome.totalMatches).toBe(0);
+  });
+
+  test("truncates matched lines from minified files so a single hit cannot blow up the body", () => {
+    const minified = "a".repeat(50_000);
+    const outcome = renderMatches(
+      [
+        {
+          filePath: "/repo/dist/bundle.js",
+          mtime: 1_000,
+          fileLines: [minified],
+          ranges: [{ startLineNumber: 1, endLineNumber: 1 }],
+          lines: [{ lineNumber: 1, text: minified }],
+        },
+      ],
+      "content",
+      1000,
+      relativeOptions
+    );
+
+    expect(outcome.body).toContain(
+      `(line truncated to ${OutputBudget.maxLineLength} chars)`
+    );
+    expect(Buffer.byteLength(outcome.body, "utf8")).toBeLessThanOrEqual(
+      OutputBudget.maxBytes
+    );
+  });
+
+  test("byte cap drops trailing rendered lines when many matches each push toward the cap", () => {
+    const longText = "x".repeat(OutputBudget.maxLineLength);
+    const fileLines = Array.from({ length: 40 }, () => longText);
+    const ranges = fileLines.map((_, index) => ({
+      startLineNumber: index + 1,
+      endLineNumber: index + 1,
+    }));
+    const lines = fileLines.map((text, index) => ({
+      lineNumber: index + 1,
+      text,
+    }));
+
+    const outcome = renderMatches(
+      [
+        {
+          filePath: "/repo/big.txt",
+          mtime: 1_000,
+          fileLines,
+          ranges,
+          lines,
+        },
+      ],
+      "content",
+      1000,
+      relativeOptions
+    );
+
+    expect(outcome.truncated).toBe(true);
+    expect(outcome.visibleItems).toBeLessThan(outcome.totalItems);
+    expect(Buffer.byteLength(outcome.body, "utf8")).toBeLessThanOrEqual(
+      OutputBudget.maxBytes
+    );
   });
 });
 
