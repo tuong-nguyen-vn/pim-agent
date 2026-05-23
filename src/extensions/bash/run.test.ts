@@ -7,6 +7,38 @@ import {
   STREAM_TAIL_BYTES,
 } from "./schema";
 
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+async function waitForFile(path: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await Bun.file(path).exists()) {
+      return;
+    }
+    await Bun.sleep(10);
+  }
+  throw new Error(`Timed out waiting for ${path}`);
+}
+
+async function waitForNoProcess(
+  marker: string,
+  timeoutMs: number
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    const probe = Bun.spawnSync({ cmd: ["pgrep", "-f", marker] });
+    if (probe.exitCode !== 0) {
+      return;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`Process still running for marker ${marker}`);
+    }
+    await Bun.sleep(25);
+  }
+}
+
 describe("runBashCommand (integration)", () => {
   test("captures stdout from a successful command", async () => {
     const r = await runBashCommand(
@@ -40,7 +72,7 @@ describe("runBashCommand (integration)", () => {
   });
 
   test("times out and reports timedOut", async () => {
-    const r = await runBashCommand("sleep 5", 100, undefined, process.cwd());
+    const r = await runBashCommand("sleep 5", 25, undefined, process.cwd());
     expect(r.timedOut).toBe(true);
     expect(r.exitCode === null || r.exitCode !== 0).toBe(true);
   });
@@ -48,7 +80,7 @@ describe("runBashCommand (integration)", () => {
   test("aborts when signal fires", async () => {
     const ctrl = new AbortController();
     const promise = runBashCommand("sleep 5", 5000, ctrl.signal, process.cwd());
-    setTimeout(() => ctrl.abort(), 50);
+    ctrl.abort();
     const r = await promise;
     expect(r.aborted).toBe(true);
   });
@@ -73,17 +105,19 @@ describe("runBashCommand (integration)", () => {
   });
 
   test("timeout kills the whole process group", async () => {
-    const marker = "sleep 41";
+    const marker = `pim-test-timeout-${Date.now()}`;
     const startedAt = Date.now();
-    const r = await runBashCommand(marker, 500, undefined, process.cwd());
+    const r = await runBashCommand(
+      `bash -c ${shellQuote(`exec -a ${marker} sleep 60`)}`,
+      50,
+      undefined,
+      process.cwd()
+    );
     const elapsed = Date.now() - startedAt;
     expect(r.timedOut).toBe(true);
     expect(r.exitCode === null || r.exitCode !== 0).toBe(true);
     expect(elapsed).toBeLessThan(KILL_GRACE_MS + 2000);
-    // wait briefly for SIGKILL grace then confirm no stray sleep 41 remains
-    await Bun.sleep(KILL_GRACE_MS + 500);
-    const probe = Bun.spawnSync({ cmd: ["pgrep", "-f", marker] });
-    expect(probe.exitCode).not.toBe(0);
+    await waitForNoProcess(marker, KILL_GRACE_MS + 500);
   });
 
   test("does not crash on timeout while drains still hold readers", async () => {
@@ -95,9 +129,9 @@ describe("runBashCommand (integration)", () => {
     const onRejection = (err: unknown) => rejections.push(err);
     process.on("unhandledRejection", onRejection);
     try {
-      const r = await runBashCommand("sleep 5", 100, undefined, process.cwd());
+      const r = await runBashCommand("sleep 5", 25, undefined, process.cwd());
       expect(r.timedOut).toBe(true);
-      await Bun.sleep(100);
+      await Bun.sleep(25);
       expect(rejections).toEqual([]);
     } finally {
       process.off("unhandledRejection", onRejection);
@@ -127,22 +161,26 @@ describe("runBashCommand (integration)", () => {
   });
 
   test("killAllActiveBashGroups sweeps in-flight subtrees", async () => {
-    const marker = `/tmp/pim-test-active-${Date.now()}.marker`;
-    // Long sleep that would touch a marker file if it ran to completion;
-    // a successful sweep kills the bash group before the touch can fire.
+    const id = Date.now();
+    const marker = `/tmp/pim-test-active-${id}.marker`;
+    const ready = `/tmp/pim-test-active-${id}.ready`;
+    const processMarker = `pim-test-active-${id}`;
     const pending = runBashCommand(
-      `sleep 30 && touch ${marker}`,
+      `touch ${shellQuote(ready)}; bash -c ${shellQuote(`exec -a ${processMarker} sleep 30`)} && touch ${shellQuote(marker)}`,
       30_000,
       undefined,
       process.cwd()
     );
-    await Bun.sleep(200);
-    killAllActiveBashGroups("SIGTERM");
-    const result = await pending;
-    expect(result.exitCode === null || result.exitCode !== 0).toBe(true);
-    // Wait past the would-be sleep + kill grace; the marker should not exist
-    await Bun.sleep(500);
-    expect(Bun.file(marker).size).toBe(0);
+    try {
+      await waitForFile(ready, 1000);
+      killAllActiveBashGroups("SIGTERM");
+      const result = await pending;
+      expect(result.exitCode === null || result.exitCode !== 0).toBe(true);
+      await waitForNoProcess(processMarker, KILL_GRACE_MS + 500);
+      expect(await Bun.file(marker).exists()).toBe(false);
+    } finally {
+      Bun.spawnSync({ cmd: ["rm", "-f", marker, ready] });
+    }
   });
 
   test("truncates very large stdout", async () => {
