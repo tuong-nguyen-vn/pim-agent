@@ -13,7 +13,10 @@ import {
 
 const PREVIEW_LINES = 10;
 const DEFAULT_PATH_FORMAT: GlobPathFormat = "relative";
-const fileCountByToolCallId = new Map<string, number>();
+
+type GlobCallState = {
+  fileCount?: number;
+};
 
 export default function (pi: ExtensionAPI): void {
   Tools.register(pi, {
@@ -23,7 +26,7 @@ export default function (pi: ExtensionAPI): void {
       "Find files by glob pattern under a directory, sorted newest first. Skips gitignored paths and dotfiles unless requested. Use glob to enumerate files instead of bash with find, fd, ls -R, or similar.",
     parameters: globSchema,
     renderShell: "self",
-    async execute(toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const {
         pattern,
         path,
@@ -50,8 +53,6 @@ export default function (pi: ExtensionAPI): void {
         cwd: ctx.cwd,
         pathFormat: resolvedPathFormat,
       });
-      fileCountByToolCallId.set(toolCallId, matches.length);
-
       const content: Array<{ type: "text"; text: string }> = [
         { type: "text", text: outcome.body },
       ];
@@ -72,6 +73,7 @@ export default function (pi: ExtensionAPI): void {
           includeDotfiles: includeDotfiles ?? false,
           includeIgnored: includeIgnored ?? false,
           pathFormat: resolvedPathFormat,
+          fileCount: matches.length,
           totalItems: outcome.totalItems,
           visibleItems: outcome.visibleItems,
           truncated: outcome.truncated,
@@ -80,11 +82,12 @@ export default function (pi: ExtensionAPI): void {
     },
     renderCall(args, theme, context) {
       const input = (args ?? {}) as Partial<GlobInput>;
+      const state = context.state as GlobCallState;
       const title = formatTitle({
         pattern: input.pattern,
         path: input.path,
         cwd: context.cwd,
-        fileCount: fileCountByToolCallId.get(context.toolCallId),
+        fileCount: state.fileCount,
       });
       return Renderer.renderToolCallTitle({
         label: "Glob",
@@ -94,6 +97,15 @@ export default function (pi: ExtensionAPI): void {
       });
     },
     renderResult(result, options, theme, context) {
+      const state = context.state as GlobCallState;
+      const details = result.details as
+        | { readonly fileCount?: number }
+        | undefined;
+
+      if (details?.fileCount !== undefined) {
+        state.fileCount = details.fileCount;
+      }
+
       return Renderer.renderBorderedResult({
         result,
         options,

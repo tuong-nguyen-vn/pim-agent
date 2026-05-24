@@ -1,7 +1,5 @@
-import { resolve } from "node:path";
+import { FileScanner, type FileScanOptions } from "../../shared/FileScanner";
 import { FsErrors } from "../../shared/FsErrors";
-import { GitignoreFilter } from "../../shared/GitignoreFilter";
-import { GlobExclusions } from "../../shared/GlobExclusions";
 import { Lines } from "../../shared/Lines";
 
 const MATCH_CONCURRENCY = 32;
@@ -29,11 +27,7 @@ export type GrepMatcher = {
   readonly matchAcrossLines: boolean;
 };
 
-export type GrepScanOptions = {
-  readonly exclude?: readonly string[];
-  readonly includeDotfiles: boolean;
-  readonly includeIgnored: boolean;
-};
+export type GrepScanOptions = FileScanOptions;
 
 export function buildMatcher(options: {
   readonly pattern: string;
@@ -66,7 +60,9 @@ export async function findMatches(
   const metadata = await FsErrors.statOrThrow(path);
   const files = metadata.isFile()
     ? [path]
-    : await scanFiles(path, glob ?? "**/*", options);
+    : (await FileScanner.scan(path, glob ?? "**/*", options)).toSorted(
+        comparePaths
+      );
   const results: GrepMatch[] = [];
 
   for (let index = 0; index < files.length; index += MATCH_CONCURRENCY) {
@@ -206,36 +202,6 @@ function linesForRanges(
   }
 
   return lines;
-}
-
-async function scanFiles(
-  path: string,
-  pattern: string,
-  options: GrepScanOptions
-): Promise<readonly string[]> {
-  const root = resolve(path);
-  const filter = options.includeIgnored
-    ? undefined
-    : await GitignoreFilter.for(root);
-  const excludes = GlobExclusions.compile(options.exclude);
-  const glob = new Bun.Glob(pattern);
-  const files: string[] = [];
-
-  for await (const filePath of glob.scan({
-    cwd: root,
-    absolute: true,
-    onlyFiles: true,
-    dot: options.includeDotfiles,
-  })) {
-    if (
-      (filter === undefined || !filter.ignores(filePath)) &&
-      !GlobExclusions.ignores(excludes, root, filePath)
-    ) {
-      files.push(filePath);
-    }
-  }
-
-  return files.sort(comparePaths);
 }
 
 function comparePaths(left: string, right: string): number {

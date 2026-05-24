@@ -15,7 +15,10 @@ import {
 const PREVIEW_LINES = 10;
 const DEFAULT_OUTPUT_MODE: GrepOutputMode = "files_with_matches";
 const DEFAULT_PATH_FORMAT: GrepPathFormat = "relative";
-const fileCountByToolCallId = new Map<string, number>();
+
+type GrepCallState = {
+  fileCount?: number;
+};
 
 export default function (pi: ExtensionAPI): void {
   Tools.register(pi, {
@@ -25,7 +28,7 @@ export default function (pi: ExtensionAPI): void {
       "Search UTF-8 text files with a JavaScript regex. Directory scans skip binary files, gitignored paths, and dotfiles unless requested; direct file paths are always searched. Use grep to search file contents instead of bash with grep, rg, ag, find -exec, or similar.",
     parameters: grepSchema,
     renderShell: "self",
-    async execute(toolCallId, params, signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const {
         pattern,
         path,
@@ -68,8 +71,6 @@ export default function (pi: ExtensionAPI): void {
         pathFormat: resolvedPathFormat,
         context: resolvedContext,
       });
-      fileCountByToolCallId.set(toolCallId, outcome.fileCount);
-
       const content: Array<{ type: "text"; text: string }> = [
         { type: "text", text: outcome.body },
       ];
@@ -102,12 +103,13 @@ export default function (pi: ExtensionAPI): void {
     },
     renderCall(args, theme, context) {
       const input = (args ?? {}) as Partial<GrepInput>;
+      const state = context.state as GrepCallState;
       const title = formatTitle({
         pattern: input.pattern,
         path: input.path,
         glob: input.glob,
         cwd: context.cwd,
-        fileCount: fileCountByToolCallId.get(context.toolCallId),
+        fileCount: state.fileCount,
       });
       return Renderer.renderToolCallTitle({
         label: "Grep",
@@ -117,6 +119,15 @@ export default function (pi: ExtensionAPI): void {
       });
     },
     renderResult(result, options, theme, context) {
+      const state = context.state as GrepCallState;
+      const details = result.details as
+        | { readonly fileCount?: number }
+        | undefined;
+
+      if (details?.fileCount !== undefined) {
+        state.fileCount = details.fileCount;
+      }
+
       return Renderer.renderBorderedResult({
         result,
         options,

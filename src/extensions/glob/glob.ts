@@ -1,18 +1,12 @@
-import { resolve } from "node:path";
+import { FileScanner, type FileScanOptions } from "../../shared/FileScanner";
 import { FsErrors } from "../../shared/FsErrors";
-import { GitignoreFilter } from "../../shared/GitignoreFilter";
-import { GlobExclusions } from "../../shared/GlobExclusions";
 
 export type GlobMatch = {
   readonly path: string;
   readonly mtime: number;
 };
 
-export type GlobScanOptions = {
-  readonly exclude?: readonly string[];
-  readonly includeDotfiles: boolean;
-  readonly includeIgnored: boolean;
-};
+export type GlobScanOptions = FileScanOptions;
 
 export async function findFiles(
   root: string,
@@ -27,30 +21,11 @@ export async function findFiles(
     );
   }
 
-  const absoluteRoot = resolve(root);
-  const filter = options.includeIgnored
-    ? undefined
-    : await GitignoreFilter.for(absoluteRoot);
-  const excludes = GlobExclusions.compile(options.exclude);
-  const glob = new Bun.Glob(pattern);
-  const matches: GlobMatch[] = [];
-
-  for await (const path of glob.scan({
-    cwd: absoluteRoot,
-    absolute: true,
-    onlyFiles: true,
-    dot: options.includeDotfiles,
-  })) {
-    if (
-      (filter === undefined || !filter.ignores(path)) &&
-      !GlobExclusions.ignores(excludes, absoluteRoot, path)
-    ) {
-      matches.push({
-        path,
-        mtime: Bun.file(path).lastModified,
-      });
-    }
-  }
+  const paths = await FileScanner.scan(root, pattern, options);
+  const matches: GlobMatch[] = paths.map((path) => ({
+    path,
+    mtime: Bun.file(path).lastModified,
+  }));
 
   return matches.sort(
     (left, right) =>
