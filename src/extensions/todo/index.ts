@@ -19,7 +19,13 @@ import {
 const WIDGET_ID = "pim-todo";
 
 export default function (pi: ExtensionAPI): void {
+  let pendingRefresh: ReturnType<typeof setImmediate> | undefined;
+
   const refreshWidget = (ctx: ExtensionContext): void => {
+    if (pendingRefresh !== undefined) {
+      clearImmediate(pendingRefresh);
+      pendingRefresh = undefined;
+    }
     if (!ctx.hasUI) {
       return;
     }
@@ -28,7 +34,11 @@ export default function (pi: ExtensionAPI): void {
       ctx.ui.setWidget(WIDGET_ID, undefined);
       return;
     }
-    ctx.ui.setWidget(WIDGET_ID, renderWidgetLines(items, ctx.ui.theme));
+    // Defer so todo widget is always the last widget to show up (right above editor)
+    pendingRefresh = setImmediate(() => {
+      pendingRefresh = undefined;
+      ctx.ui.setWidget(WIDGET_ID, renderWidgetLines(items, ctx.ui.theme));
+    });
   };
 
   const reconstructAndRefresh = (ctx: ExtensionContext): void => {

@@ -19,7 +19,7 @@
     "brightCyan": 14,
     "brightWhite": 15,
 
-    "panelBg": "#e6e9f0"
+    "panelBg": "#e8e8e8"
   },
   "colors": {
     "accent": "blue",
@@ -44,19 +44,19 @@
     "toolPendingBg": "",
     "toolSuccessBg": "",
     "toolErrorBg": "",
-    "toolTitle": "gray",
+    "toolTitle": "",
     "toolOutput": "gray",
 
-    "mdHeading": "magenta",
-    "mdLink": "blue",
-    "mdLinkUrl": "gray",
-    "mdCode": "magenta",
+    "mdHeading": "blue",
+    "mdLink": "magenta",
+    "mdLinkUrl": "cyan",
+    "mdCode": "green",
     "mdCodeBlock": "",
     "mdCodeBlockBorder": "gray",
     "mdQuote": "yellow",
-    "mdQuoteBorder": "gray",
+    "mdQuoteBorder": "yellow",
     "mdHr": "gray",
-    "mdListBullet": "blue",
+    "mdListBullet": "cyan",
 
     "toolDiffAdded": "green",
     "toolDiffRemoved": "red",
@@ -64,11 +64,11 @@
 
     "syntaxComment": "gray",
     "syntaxKeyword": "magenta",
-    "syntaxFunction": "blue",
-    "syntaxVariable": "cyan",
+    "syntaxFunction": "green",
+    "syntaxVariable": "magenta",
     "syntaxString": "green",
-    "syntaxNumber": "yellow",
-    "syntaxType": "blue",
+    "syntaxNumber": "blue",
+    "syntaxType": "cyan",
     "syntaxOperator": "",
     "syntaxPunctuation": "",
 

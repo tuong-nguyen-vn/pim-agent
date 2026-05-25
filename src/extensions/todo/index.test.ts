@@ -54,6 +54,7 @@ describe("todo extension", () => {
       { content: "Skip obsolete", status: "cancelled" },
     ]);
     await emit(pi, "turn_end", { type: "turn_end" }, ctx);
+    await flush();
 
     expect(ctx.widgetUpdates.at(-1)?.lines).toEqual([
       "**2 todos** (1 done, 1 cancelled)",
@@ -82,6 +83,7 @@ describe("todo extension", () => {
     ];
     await setTodos(pi, ctx, todos);
     await emit(pi, "turn_end", { type: "turn_end" }, ctx);
+    await flush();
     const updatesBeforeInput = ctx.widgetUpdates.length;
 
     const results = await emit(pi, "input", { type: "input" }, ctx);
@@ -218,6 +220,10 @@ async function emit(
     results.push(await handler(payload, ctx));
   }
   return results;
+}
+
+function flush(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 async function setTodos(

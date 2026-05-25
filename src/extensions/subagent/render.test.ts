@@ -230,6 +230,51 @@ describe("subagent render formatting", () => {
     ]);
   });
 
+  test("expanded done render uses configured markdown theme tokens", () => {
+    const rendered = tracingTheme();
+    renderResult(
+      result(
+        [
+          "# Heading",
+          "",
+          "[docs](https://example.test)",
+          "",
+          "`inline`",
+          "",
+          "> quoted",
+          "",
+          "- item",
+          "",
+          "```",
+          "plain code",
+          "```",
+          "",
+          "---",
+        ].join("\n")
+      ),
+      { expanded: true, isPartial: false },
+      rendered.theme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    ).render(120);
+
+    const colors = new Set(rendered.calls.map((call) => call.color));
+    const expectedColors = [
+      "mdHeading",
+      "mdLink",
+      "mdCode",
+      "mdQuote",
+      "mdQuoteBorder",
+      "mdListBullet",
+      "mdCodeBlock",
+      "mdCodeBlockBorder",
+      "mdHr",
+    ] satisfies readonly ThemeColor[];
+
+    for (const color of expectedColors) {
+      expect(colors.has(color)).toBe(true);
+    }
+  });
+
   test("expanded done render uses the default color for final message text", () => {
     const rendered = tracingTheme();
     renderResult(
