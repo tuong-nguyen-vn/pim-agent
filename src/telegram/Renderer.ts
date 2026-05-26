@@ -7,6 +7,7 @@ import type { TodoInput } from "../extensions/todo/schema";
 import type { LogsMode } from "./Config";
 import { Markdown } from "./Markdown";
 import type { Session, SessionId } from "./Session";
+import { TypingIndicator } from "./TypingIndicator";
 
 export type TurnEndState = "ok" | "cancelled" | "error";
 type TurnState = TurnEndState | "running";
@@ -43,8 +44,8 @@ export class Renderer {
   private readonly entries: TrackerEntry[] = [];
   private readonly toolIndex = new Map<string, number>();
   private readonly subagentBaseById = new Map<string, string>();
+  private readonly typing: TypingIndicator;
   private statusMessageId: number | undefined;
-  private typingTimer: Timer | undefined;
   private editTimer: Timer | undefined;
   private thinking = "";
   private narration = "";
@@ -58,11 +59,11 @@ export class Renderer {
     this.api = api;
     this.sessionId = session.id;
     this.logsMode = session.settings.logsMode ?? "text";
+    this.typing = new TypingIndicator(api, session.id);
   }
 
-  public async start(): Promise<void> {
-    await this.sendTyping();
-    this.typingTimer = setInterval(() => void this.sendTyping(), 4_000);
+  public start(): void {
+    this.typing.start();
   }
 
   public handleEvent(event: AgentSessionEvent): void {
@@ -395,14 +396,6 @@ export class Renderer {
     }
   }
 
-  private async sendTyping(): Promise<void> {
-    await this.api
-      .sendChatAction(this.sessionId.chatId, "typing", {
-        message_thread_id: this.sessionId.threadId,
-      })
-      .catch(() => {});
-  }
-
   private async sendMessage(
     html: string,
     opts: { readonly status: boolean }
@@ -490,10 +483,7 @@ export class Renderer {
   }
 
   private clearTimers(): void {
-    if (this.typingTimer) {
-      clearInterval(this.typingTimer);
-      this.typingTimer = undefined;
-    }
+    this.typing.stop();
     if (this.editTimer) {
       clearTimeout(this.editTimer);
       this.editTimer = undefined;

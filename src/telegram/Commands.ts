@@ -15,9 +15,10 @@ import {
   type ThinkingLevelOpt,
 } from "./Config";
 import { Markdown } from "./Markdown";
-import { Session, type SessionId } from "./Session";
+import { Session, type SessionCompactResult, type SessionId } from "./Session";
 import { SessionRegistry } from "./SessionRegistry";
 import { Supervisor } from "./Supervisor";
+import { TypingIndicator } from "./TypingIndicator";
 
 const CB_CLEAR_CONFIRM = "clear-confirm";
 const CB_CLEAR_CANCEL = "clear-cancel";
@@ -32,6 +33,7 @@ export const BOT_COMMANDS: readonly BotCommand[] = [
   { command: "chatid", description: "Show this chat's numeric ID" },
   { command: "cancel", description: "Cancel the current turn" },
   { command: "clear", description: "Reset chat history and context window" },
+  { command: "compact", description: "Compact the current session context" },
   { command: "cd", description: "Show or change the working directory" },
   { command: "model", description: "Show or change the AI model" },
   { command: "effort", description: "Show or change thinking effort level" },
@@ -102,6 +104,11 @@ export class Commands {
           return;
         case "/clear":
           await this.runQueued(ctx, session, () => this.cmdClear(session));
+          return;
+        case "/compact":
+          await this.runQueued(ctx, session, () =>
+            this.cmdCompact(session, args || undefined)
+          );
           return;
         case "/cd":
           if (!args) {
@@ -333,6 +340,40 @@ export class Commands {
       "⚠️ Are you sure you want to reset this thread's chat history and context window?",
       kb
     );
+  }
+
+  private async cmdCompact(
+    session: Session,
+    customInstructions?: string
+  ): Promise<void> {
+    const sent = await this.api.sendMessage(
+      session.id.chatId,
+      "⏳ Compacting context...",
+      {
+        message_thread_id: session.id.threadId,
+        link_preview_options: { is_disabled: true },
+      }
+    );
+    const typing = new TypingIndicator(this.api, session.id);
+    typing.start();
+    try {
+      const result = await session.compact(customInstructions);
+      await this.editStatusMessage(
+        session.id,
+        sent.message_id,
+        Commands.renderCompactSuccess(result)
+      );
+    } catch (err) {
+      const msg = (err as Error).message ?? String(err);
+      console.error(`[bot] compact failed:`, err);
+      await this.editStatusMessage(
+        session.id,
+        sent.message_id,
+        `⚠️ ${Markdown.escape(msg)}`
+      );
+    } finally {
+      typing.stop();
+    }
   }
 
   private async cmdCdRead(session: Session): Promise<void> {
@@ -588,6 +629,32 @@ export class Commands {
   ): string {
     const original = ctx.callbackQuery.message?.text ?? "";
     return `<s>${Markdown.escape(original)}</s>\n\n<i>${note}</i>`;
+  }
+
+  private static renderCompactSuccess(result: SessionCompactResult): string {
+    const before = result.compaction.tokensBefore.toLocaleString("en-US");
+    const messages = result.activeMessages.toLocaleString("en-US");
+    return [
+      "✅ <b>Context compacted.</b>",
+      "",
+      `<b>Before</b>: ${before} tokens`,
+      `<b>Now</b>: ${messages} messages (exact usage will update after next message)`,
+    ].join("\n");
+  }
+
+  private async editStatusMessage(
+    sessionId: SessionId,
+    messageId: number,
+    html: string
+  ): Promise<void> {
+    try {
+      await this.api.editMessageText(sessionId.chatId, messageId, html, {
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      });
+    } catch (err) {
+      console.warn(`[send] status edit failed:`, err);
+    }
   }
 
   private static async safeEditMessage(

@@ -9,6 +9,7 @@ import {
   ModelRegistry,
   SessionManager,
   SettingsManager,
+  type CompactionResult,
 } from "@earendil-works/pi-coding-agent";
 import type { Api } from "grammy";
 import { mkdir, rename, stat, unlink } from "node:fs/promises";
@@ -47,6 +48,11 @@ export type SetModelResult =
       readonly kind: "none" | "ambiguous";
       readonly candidates: readonly string[];
     };
+
+export type SessionCompactResult = {
+  readonly compaction: CompactionResult;
+  readonly activeMessages: number;
+};
 
 export type SessionDeps = {
   readonly id: SessionId;
@@ -246,6 +252,17 @@ export class Session {
       if (this.cached) {
         this.cached.setThinkingLevel(level as ThinkingLevel);
       }
+    });
+  }
+
+  public compact(customInstructions?: string): Promise<SessionCompactResult> {
+    return this.enqueueResult(async (): Promise<SessionCompactResult> => {
+      const agent = await this.ensureCached();
+      const compaction = await agent.compact(customInstructions);
+      return {
+        compaction,
+        activeMessages: agent.messages.length,
+      };
     });
   }
 
