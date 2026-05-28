@@ -15,8 +15,10 @@ Launch:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shlex
+import urllib.request
 from pathlib import Path
 
 from harbor.agents.installed.base import BaseInstalledAgent, with_prompt_template
@@ -29,6 +31,38 @@ OUTPUT_FILENAME = "pim.txt"
 DEFAULT_TIMEOUT_SEC = 10800  # 3h
 
 HOST_PI_MODELS = Path.home() / ".pi" / "agent" / "models.json"
+HOST_PI_SETTINGS = Path.home() / ".pi" / "agent" / "settings.json"
+
+log = logging.getLogger(__name__)
+
+
+def _get_llm_base_url() -> str | None:
+    """Read the LLM server base URL from pi's models.json."""
+    if not HOST_PI_MODELS.exists():
+        return None
+    cfg = json.loads(HOST_PI_MODELS.read_text())
+    for p in (cfg.get("providers") or {}).values():
+        url = p.get("baseUrl")
+        if url:
+            return url.rstrip("/")
+    return None
+
+
+def _purge_kv_cache() -> None:
+    """Erase all llama-server KV cache slots to free stale state."""
+    base = _get_llm_base_url()
+    if not base:
+        return
+    slots_url = base.replace("/v1", "") + "/slots/0?action=erase"
+    req = urllib.request.Request(slots_url, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read())
+            n = body.get("n_erased", 0)
+            if n > 0:
+                log.info("Purged %d tokens from KV cache", n)
+    except Exception as e:
+        log.debug("KV cache purge skipped: %s", e)
 
 
 class PimAgent(BaseInstalledAgent):
@@ -79,17 +113,22 @@ class PimAgent(BaseInstalledAgent):
             command=f"test -f {CONTAINER_PIM_DIR}/bin/pim.ts",
         )
 
-        # Provision pi's models.json so the container's pi sees the same
-        # provider config as the host (custom baseUrl, model ids, etc.).
+        # Provision pi's models.json and settings.json so the container's
+        # pi sees the same provider config and retry settings as the host.
         if HOST_PI_MODELS.exists():
             models_json = HOST_PI_MODELS.read_text()
+            env: dict[str, str] = {"PIM_MODELS_JSON": models_json}
+            cmd = (
+                "mkdir -p ~/.pi/agent && "
+                'printf "%s" "$PIM_MODELS_JSON" > ~/.pi/agent/models.json'
+            )
+            if HOST_PI_SETTINGS.exists():
+                env["PIM_SETTINGS_JSON"] = HOST_PI_SETTINGS.read_text()
+                cmd += ' && printf "%s" "$PIM_SETTINGS_JSON" > ~/.pi/agent/settings.json'
             await self.exec_as_agent(
                 environment,
-                command=(
-                    "mkdir -p ~/.pi/agent && "
-                    'printf "%s" "$PIM_MODELS_JSON" > ~/.pi/agent/models.json'
-                ),
-                env={"PIM_MODELS_JSON": models_json},
+                command=cmd,
+                env=env,
             )
 
     @with_prompt_template
@@ -101,6 +140,8 @@ class PimAgent(BaseInstalledAgent):
     ) -> None:
         if not self.model_name:
             raise ValueError("model_name is required")
+
+        _purge_kv_cache()
 
         provider = self.model_name.split("/", 1)[0] if "/" in self.model_name else ""
         env = self._collect_env(provider)
