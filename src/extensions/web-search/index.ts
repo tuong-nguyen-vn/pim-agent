@@ -1,5 +1,9 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Renderer } from "../../shared/Renderer";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import {
+  Renderer,
+  type StatefulToolCallTitleContext,
+  type StatefulToolCallTitleState,
+} from "../../shared/Renderer";
 import { Tools } from "../../shared/Tools";
 import { ExaMcpClient } from "./ExaMcpClient";
 import { formatTitle } from "./render";
@@ -7,6 +11,29 @@ import { type WebSearchInput, webSearchSchema } from "./schema";
 import { clampNumResults, formatResults } from "./search";
 
 const PREVIEW_LINES = 6;
+
+type WebSearchCallState = StatefulToolCallTitleState & {
+  resultCount?: number;
+};
+
+type WebSearchRenderContext = StatefulToolCallTitleContext & {
+  readonly args?: WebSearchInput;
+};
+
+function renderTitle(
+  input: Partial<WebSearchInput>,
+  theme: Theme,
+  context: WebSearchRenderContext
+) {
+  const state = context.state as WebSearchCallState;
+  const count = state.resultCount ?? clampNumResults(input.numResults);
+  return Renderer.renderStatefulToolCallTitle({
+    label: "Web Search",
+    title: formatTitle(input.query, count),
+    theme,
+    context,
+  });
+}
 
 export default function (pi: ExtensionAPI): void {
   const apiKey = process.env["EXA_API_KEY"];
@@ -57,15 +84,21 @@ export default function (pi: ExtensionAPI): void {
       };
     },
     renderCall(args, theme, context) {
-      const input = (args ?? {}) as Partial<WebSearchInput>;
-      return Renderer.renderToolCallTitle({
-        label: "Web Search",
-        title: formatTitle(input.query, input.numResults),
+      return renderTitle(
+        (args ?? {}) as Partial<WebSearchInput>,
         theme,
-        context,
-      });
+        context
+      );
     },
     renderResult(result, options, theme, context) {
+      const state = context.state as WebSearchCallState;
+      const details = result.details as { readonly count?: number } | undefined;
+
+      if (details?.count !== undefined) {
+        state.resultCount = details.count;
+        renderTitle(context.args ?? {}, theme, context);
+      }
+
       return Renderer.renderBorderedResult({
         result,
         options,
