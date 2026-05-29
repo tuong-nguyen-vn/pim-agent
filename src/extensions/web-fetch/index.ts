@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { PimSettings } from "../../shared/PimSettings";
 import { Renderer } from "../../shared/Renderer";
 import { SpillCache } from "../../shared/SpillCache";
 import { Tools } from "../../shared/Tools";
@@ -14,11 +15,16 @@ type WebFetchRenderState = {
   outcome?: WebFetchTitleOutcome;
 };
 
+async function createJina(): Promise<JinaReaderClient> {
+  const apiKey = await PimSettings.getJinaApiKey();
+  return new JinaReaderClient(apiKey ? { apiKey } : {});
+}
+
 export default function (pi: ExtensionAPI): void {
   SpillCache.installSweeper();
 
-  const apiKey = process.env["JINA_API_KEY"];
-  const jina = new JinaReaderClient(apiKey ? { apiKey } : {});
+  let jinaPromise: Promise<JinaReaderClient> | undefined;
+  const getJina = () => (jinaPromise ??= createJina());
   const webView = new WebViewFetchClient();
 
   Tools.register(pi, {
@@ -37,6 +43,7 @@ export default function (pi: ExtensionAPI): void {
 
       const safeUrl = validatePublicUrl(url);
 
+      const jina = await getJina();
       const outcome = await executeFetch({
         jina,
         webView,

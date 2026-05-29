@@ -4,6 +4,7 @@ import {
   type StatefulToolCallTitleContext,
   type StatefulToolCallTitleState,
 } from "../../shared/Renderer";
+import { PimSettings } from "../../shared/PimSettings";
 import { Tools } from "../../shared/Tools";
 import { ExaMcpClient } from "./ExaMcpClient";
 import { formatTitle } from "./render";
@@ -19,6 +20,11 @@ type WebSearchCallState = StatefulToolCallTitleState & {
 type WebSearchRenderContext = StatefulToolCallTitleContext & {
   readonly args?: WebSearchInput;
 };
+
+async function createClient(): Promise<ExaMcpClient> {
+  const apiKey = await PimSettings.getExaApiKey();
+  return new ExaMcpClient(apiKey ? { apiKey } : {});
+}
 
 function renderTitle(
   input: Partial<WebSearchInput>,
@@ -36,8 +42,8 @@ function renderTitle(
 }
 
 export default function (pi: ExtensionAPI): void {
-  const apiKey = process.env["EXA_API_KEY"];
-  const client = new ExaMcpClient(apiKey ? { apiKey } : {});
+  let clientPromise: Promise<ExaMcpClient> | undefined;
+  const getClient = () => (clientPromise ??= createClient());
 
   Tools.register(pi, {
     name: "web_search",
@@ -62,6 +68,7 @@ export default function (pi: ExtensionAPI): void {
       }
 
       const clamped = clampNumResults(numResults);
+      const client = await getClient();
       const results = await client.search({
         query: trimmed,
         numResults: clamped,
