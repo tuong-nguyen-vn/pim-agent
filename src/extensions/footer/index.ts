@@ -125,7 +125,7 @@ export default function (pi: ExtensionAPI): void {
   };
 
   pi.registerCommand("powerline", {
-    description: "Toggle the pim powerline footer",
+    description: "Toggle Pim powerline footer",
     handler: async (_args, ctx) => {
       const current = await PimSettings.get("powerline");
       const next = { ...current, enabled: !current.enabled };

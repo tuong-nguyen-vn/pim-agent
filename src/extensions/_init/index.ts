@@ -11,6 +11,7 @@ const shortcuts = [
   ["/<command>", "Slash commands", "<command>"],
   ["/hotkeys", "Show all keyboard shortcuts"],
   ["/settings", "Open settings menu"],
+  ["/powerline", "Toggle Pim powerline footer"],
   ["@<path>", "Attach files", "<path>"],
   ["!<command>", "Run bash command", "<command>"],
   ["!!<command>", "Run bash command (excluded from context)", "<command>"],
@@ -41,14 +42,14 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     const renderKey = (key: string, muted: string | undefined): string => {
       const padding = " ".repeat(Math.max(0, keyCol - key.length));
       if (!muted) {
-        return theme.fg("warning", key + padding);
+        return theme.fg("mdCode", key + padding);
       }
       const idx = key.indexOf(muted);
       if (idx === -1) {
-        return theme.fg("warning", key + padding);
+        return theme.fg("mdCode", key + padding);
       }
       return (
-        theme.fg("warning", key.slice(0, idx)) +
+        theme.fg("mdCode", key.slice(0, idx)) +
         theme.fg("muted", muted) +
         key.slice(idx + muted.length) +
         padding
