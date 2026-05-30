@@ -1,0 +1,133 @@
+Hit:1 http://deb.debian.org/debian trixie InRelease
+Hit:2 http://deb.debian.org/debian trixie-updates InRelease
+Hit:3 http://deb.debian.org/debian-security trixie-security InRelease
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+curl is already the newest version (8.14.1-2+deb13u3).
+git is already the newest version (1:2.47.3-0+deb13u1).
+libgl1 is already the newest version (1.7.0-1+b2).
+0 upgraded, 0 newly installed, 0 to remove and 118 not upgraded.
+downloading uv 0.9.5 x86_64-unknown-linux-gnu
+no checksums to verify
+installing to /root/.local/bin
+  uv
+  uvx
+everything's installed!
+
+To add $HOME/.local/bin to your PATH, either restart your shell or run:
+
+    source $HOME/.local/bin/env (sh, bash, zsh)
+    source $HOME/.local/bin/env.fish (fish)
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 38.8M  100 38.8M    0     0   191M      0 --:--:-- --:--:-- --:--:--  191M
+   Updating https://github.com/ChaoningZhang/MobileSAM.git (34bbbfdface3c18e5221aa7de6032d7220c6c6a1)
+    Updated https://github.com/ChaoningZhang/MobileSAM.git (34bbbfdface3c18e5221aa7de6032d7220c6c6a1)
+   Building mobile-sam @ git+https://github.com/ChaoningZhang/MobileSAM.git@34bbbfdface3c18e5221aa7de6032d7220c6c6a1
+Downloading networkx (2.0MiB)
+Downloading pillow (6.8MiB)
+Downloading numpy (16.0MiB)
+Downloading pygments (1.2MiB)
+Downloading shapely (3.0MiB)
+Downloading hf-xet (4.3MiB)
+Downloading opencv-python (63.9MiB)
+Downloading timm (2.4MiB)
+Downloading pandas (11.8MiB)
+Downloading sympy (5.9MiB)
+Downloading torchvision (1.8MiB)
+Downloading torch (166.6MiB)
+      Built mobile-sam @ git+https://github.com/ChaoningZhang/MobileSAM.git@34bbbfdface3c18e5221aa7de6032d7220c6c6a1
+ Downloading torchvision
+ Downloading pygments
+ Downloading networkx
+ Downloading timm
+ Downloading shapely
+ Downloading hf-xet
+ Downloading sympy
+ Downloading pillow
+ Downloading pandas
+ Downloading numpy
+ Downloading opencv-python
+ Downloading torch
+Installed 45 packages in 435ms
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-8.4.1, pluggy-1.6.0
+rootdir: /tests
+plugins: json-ctrf-0.3.5, anyio-4.13.0
+collected 9 items
+
+../tests/test_outputs.py ........F                                       [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_coords_are_flat_lists __________________________
+
+    def test_coords_are_flat_lists():
+        """
+        Checks that 'coords_x' and 'coords_y' columns contain flat lists of numbers,
+        allowing for them to be stored as strings.
+        """
+        df = pd.read_csv("/app/test_output.csv")
+        for col in ['coords_x', 'coords_y']:
+            for index, value in df[col].items():
+                parsed_value = None
+                if isinstance(value, str):
+                    try:
+                        # Use ast.literal_eval for safe evaluation of string
+                        parsed_value = ast.literal_eval(value)
+                    except (ValueError, SyntaxError):
+                        assert False, (f"Row {index}, column '{col}': "
+                                       f"could not parse string.")
+                elif isinstance(value, (list, np.ndarray)):
+                    parsed_value = value
+                else:
+                    assert False, (f"Row {index}, column '{col}': value is"
+                                   f" not a list or string (got {type(value)}).")
+    
+>               assert isinstance(parsed_value, list), \
+                    (f"Row {index}, column '{col}': parsed value is "
+                     f"not a list (got {type(parsed_value)}).")
+E               AssertionError: Row 0, column 'coords_x': parsed value is not a list (got <class 'tuple'>).
+E               assert False
+E                +  where False = isinstance((75, 72, 70, 69, 69, 68, ...), list)
+
+/tests/test_outputs.py:280: AssertionError
+==================================== PASSES ====================================
+_______________________________ test_run_script ________________________________
+----------------------------- Captured stdout call -----------------------------
+Loaded 32 masks from /app/test_metadata.csv
+Loading MobileSAM from /app/mobile_sam.pt ...
+Model loaded and image embedding computed.
+Removing overlaps between masks ...
+Extracting final contours ...
+Saved refined masks to /app/test_output.csv
+Total masks: 32, Refined contours: 32
+----------------------------- Captured stderr call -----------------------------
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/timm/models/layers/__init__.py:48: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/timm/models/registry.py:4: FutureWarning: Importing from timm.models.registry is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/mobile_sam/modeling/tiny_vit_sam.py:656: UserWarning: Overwriting tiny_vit_5m_224 in registry with mobile_sam.modeling.tiny_vit_sam.tiny_vit_5m_224. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+  return register_model(fn_wrapper)
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/mobile_sam/modeling/tiny_vit_sam.py:656: UserWarning: Overwriting tiny_vit_11m_224 in registry with mobile_sam.modeling.tiny_vit_sam.tiny_vit_11m_224. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+  return register_model(fn_wrapper)
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/mobile_sam/modeling/tiny_vit_sam.py:656: UserWarning: Overwriting tiny_vit_21m_224 in registry with mobile_sam.modeling.tiny_vit_sam.tiny_vit_21m_224. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+  return register_model(fn_wrapper)
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/mobile_sam/modeling/tiny_vit_sam.py:656: UserWarning: Overwriting tiny_vit_21m_384 in registry with mobile_sam.modeling.tiny_vit_sam.tiny_vit_21m_384. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+  return register_model(fn_wrapper)
+/root/.cache/uv/archive-v0/CEcDu2oY1daQtfFCpfzzg/lib/python3.11/site-packages/mobile_sam/modeling/tiny_vit_sam.py:656: UserWarning: Overwriting tiny_vit_21m_512 in registry with mobile_sam.modeling.tiny_vit_sam.tiny_vit_21m_512. This is because the name being registered conflicts with an existing name. Please check if this is not expected.
+  return register_model(fn_wrapper)
+Refining masks:   0%|                                   | 0/32 [00:00<?, ?it/s]Refining masks:   3%|▊                          | 1/32 [00:00<00:12,  2.52it/s]Refining masks:   6%|█▋                         | 2/32 [00:00<00:08,  3.54it/s]Refining masks:   9%|██▌                        | 3/32 [00:00<00:08,  3.47it/s]Refining masks:  12%|███▍                       | 4/32 [00:01<00:07,  3.89it/s]Refining masks:  16%|████▏                      | 5/32 [00:01<00:07,  3.69it/s]Refining masks:  19%|█████                      | 6/32 [00:01<00:06,  4.02it/s]Refining masks:  22%|█████▉                     | 7/32 [00:01<00:06,  3.78it/s]Refining masks:  25%|██████▊                    | 8/32 [00:02<00:06,  3.65it/s]Refining masks:  28%|███████▌                   | 9/32 [00:02<00:05,  3.96it/s]Refining masks:  31%|████████▏                 | 10/32 [00:02<00:05,  4.21it/s]Refining masks:  34%|████████▉                 | 11/32 [00:02<00:05,  3.95it/s]Refining masks:  38%|█████████▊                | 12/32 [00:03<00:04,  4.16it/s]Refining masks:  41%|██████████▌               | 13/32 [00:03<00:04,  3.92it/s]Refining masks:  44%|███████████▍              | 14/32 [00:03<00:04,  4.17it/s]Refining masks:  47%|████████████▏             | 15/32 [00:03<00:03,  4.35it/s]Refining masks:  50%|█████████████             | 16/32 [00:04<00:04,  4.00it/s]Refining masks:  53%|█████████████▊            | 17/32 [00:04<00:03,  4.24it/s]Refining masks:  56%|██████████████▋           | 18/32 [00:04<00:03,  3.95it/s]Refining masks:  59%|███████████████▍          | 19/32 [00:04<00:03,  4.20it/s]Refining masks:  62%|████████████████▎         | 20/32 [00:05<00:03,  3.90it/s]Refining masks:  66%|█████████████████         | 21/32 [00:05<00:02,  4.16it/s]Refining masks:  69%|█████████████████▉        | 22/32 [00:05<00:02,  3.90it/s]Refining masks:  72%|██████████████████▋       | 23/32 [00:05<00:02,  4.12it/s]Refining masks:  75%|███████████████████▌      | 24/32 [00:06<00:02,  3.90it/s]Refining masks:  78%|████████████████████▎     | 25/32 [00:06<00:01,  4.15it/s]Refining masks:  81%|█████████████████████▏    | 26/32 [00:06<00:01,  4.36it/s]Refining masks:  84%|█████████████████████▉    | 27/32 [00:06<00:01,  4.02it/s]Refining masks:  88%|██████████████████████▊   | 28/32 [00:07<00:00,  4.25it/s]Refining masks:  91%|███████████████████████▌  | 29/32 [00:07<00:00,  4.43it/s]Refining masks:  94%|████████████████████████▍ | 30/32 [00:07<00:00,  4.08it/s]Refining masks:  97%|█████████████████████████▏| 31/32 [00:07<00:00,  4.29it/s]Refining masks: 100%|██████████████████████████| 32/32 [00:07<00:00,  4.45it/s]Refining masks: 100%|██████████████████████████| 32/32 [00:07<00:00,  4.05it/s]
+=========================== short test summary info ============================
+PASSED ../tests/test_outputs.py::test_python_file_exists
+PASSED ../tests/test_outputs.py::test_run_script
+PASSED ../tests/test_outputs.py::test_csv_output_exists
+PASSED ../tests/test_outputs.py::test_csv_shape_cols
+PASSED ../tests/test_outputs.py::test_masks_are_no_longer_rect
+PASSED ../tests/test_outputs.py::test_mask_alignment
+PASSED ../tests/test_outputs.py::test_no_polyline_overlaps
+PASSED ../tests/test_outputs.py::test_single_contiguous_mask_per_cell
+FAILED ../tests/test_outputs.py::test_coords_are_flat_lists - AssertionError:...
+========================= 1 failed, 8 passed in 18.48s =========================

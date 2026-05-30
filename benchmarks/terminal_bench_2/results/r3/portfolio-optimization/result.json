@@ -1,0 +1,111 @@
+{
+    "id": "aaab8646-e3cf-48c3-bb75-66a8002de84c",
+    "task_name": "portfolio-optimization",
+    "trial_name": "portfolio-optimization__hGWRLoF",
+    "trial_uri": "file:///home/htpc/Desktop/dev/pim-agent/benchmarks/terminal_bench_2/runs/r3/2026-05-29__23-16-57/portfolio-optimization__hGWRLoF",
+    "task_id": {
+        "git_url": "https://github.com/laude-institute/terminal-bench-2.git",
+        "git_commit_id": "69671fbaac6d67a7ef0dfec016cc38a64ef7a77c",
+        "path": "portfolio-optimization"
+    },
+    "source": "terminal-bench",
+    "task_checksum": "da8a95d2c518a70ef66e47f3571fffd3f9172334c1c24e01d9ee232bdebd428c",
+    "config": {
+        "task": {
+            "path": "portfolio-optimization",
+            "git_url": "https://github.com/laude-institute/terminal-bench-2.git",
+            "git_commit_id": "69671fbaac6d67a7ef0dfec016cc38a64ef7a77c",
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "terminal-bench"
+        },
+        "trial_name": "portfolio-optimization__hGWRLoF",
+        "trials_dir": "benchmarks/terminal_bench_2/runs/r3/2026-05-29__23-16-57",
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": null,
+            "import_path": "benchmarks.terminal_bench_2.adapter:PimAgent",
+            "model_name": "ollama/Qwen3.6-35B-A3B-UD-Q6_K_XL",
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "kwargs": {},
+            "env": {},
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "suppress_override_warnings": false,
+            "mounts": null,
+            "extra_docker_compose": [
+                "/home/htpc/Desktop/dev/pim-agent/benchmarks/terminal_bench_2/overlay.yaml"
+            ],
+            "env": {},
+            "kwargs": {}
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "env": {},
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "274a429d-6c48-46af-855b-fa86c8bfe56d"
+    },
+    "agent_info": {
+        "name": "pim",
+        "version": "0.77.0",
+        "model_info": {
+            "name": "Qwen3.6-35B-A3B-UD-Q6_K_XL",
+            "provider": "ollama"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 119527,
+        "n_cache_tokens": 107473,
+        "n_output_tokens": 3708,
+        "cost_usd": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 1.0
+        }
+    },
+    "exception_info": null,
+    "started_at": "2026-05-29T18:41:03.482415Z",
+    "finished_at": "2026-05-29T18:45:15.597918Z",
+    "environment_setup": {
+        "started_at": "2026-05-29T18:41:03.483022Z",
+        "finished_at": "2026-05-29T18:41:12.424987Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-05-29T18:41:12.425005Z",
+        "finished_at": "2026-05-29T18:41:21.110334Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-05-29T18:41:21.110377Z",
+        "finished_at": "2026-05-29T18:44:08.463341Z"
+    },
+    "verifier": {
+        "started_at": "2026-05-29T18:44:08.756541Z",
+        "finished_at": "2026-05-29T18:45:04.151008Z"
+    },
+    "step_results": null
+}

@@ -1,0 +1,111 @@
+{
+    "id": "ef65ff84-bcca-42bb-8eab-e7b4e5add3f2",
+    "task_name": "git-leak-recovery",
+    "trial_name": "git-leak-recovery__yy6scsC",
+    "trial_uri": "file:///home/htpc/Desktop/dev/pim-agent/benchmarks/terminal_bench_2/runs/r3/2026-05-29__23-16-57/git-leak-recovery__yy6scsC",
+    "task_id": {
+        "git_url": "https://github.com/laude-institute/terminal-bench-2.git",
+        "git_commit_id": "69671fbaac6d67a7ef0dfec016cc38a64ef7a77c",
+        "path": "git-leak-recovery"
+    },
+    "source": "terminal-bench",
+    "task_checksum": "6e313b191485295fc042ddfdc4d1184dc9588de1fa57f7513685fec67a7d7d9d",
+    "config": {
+        "task": {
+            "path": "git-leak-recovery",
+            "git_url": "https://github.com/laude-institute/terminal-bench-2.git",
+            "git_commit_id": "69671fbaac6d67a7ef0dfec016cc38a64ef7a77c",
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "terminal-bench"
+        },
+        "trial_name": "git-leak-recovery__yy6scsC",
+        "trials_dir": "benchmarks/terminal_bench_2/runs/r3/2026-05-29__23-16-57",
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": null,
+            "import_path": "benchmarks.terminal_bench_2.adapter:PimAgent",
+            "model_name": "ollama/Qwen3.6-35B-A3B-UD-Q6_K_XL",
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "kwargs": {},
+            "env": {},
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "suppress_override_warnings": false,
+            "mounts": null,
+            "extra_docker_compose": [
+                "/home/htpc/Desktop/dev/pim-agent/benchmarks/terminal_bench_2/overlay.yaml"
+            ],
+            "env": {},
+            "kwargs": {}
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "env": {},
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "274a429d-6c48-46af-855b-fa86c8bfe56d"
+    },
+    "agent_info": {
+        "name": "pim",
+        "version": "0.78.0",
+        "model_info": {
+            "name": "Qwen3.6-35B-A3B-UD-Q6_K_XL",
+            "provider": "ollama"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 25416,
+        "n_cache_tokens": 20052,
+        "n_output_tokens": 1254,
+        "cost_usd": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 1.0
+        }
+    },
+    "exception_info": null,
+    "started_at": "2026-05-30T12:16:35.061731Z",
+    "finished_at": "2026-05-30T12:17:48.770606Z",
+    "environment_setup": {
+        "started_at": "2026-05-30T12:16:35.067799Z",
+        "finished_at": "2026-05-30T12:16:40.923757Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-05-30T12:16:40.923775Z",
+        "finished_at": "2026-05-30T12:16:51.330540Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-05-30T12:16:51.330583Z",
+        "finished_at": "2026-05-30T12:17:32.664247Z"
+    },
+    "verifier": {
+        "started_at": "2026-05-30T12:17:32.864241Z",
+        "finished_at": "2026-05-30T12:17:37.423523Z"
+    },
+    "step_results": null
+}

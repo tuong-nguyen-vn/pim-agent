@@ -1,0 +1,809 @@
+{
+  "run": "r3",
+  "total": 89,
+  "passed": 33,
+  "score": "33/89 (37.1%)",
+  "tasks": [
+    {
+      "task": "adaptive-rejection-sampler",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 30447,
+      "output_tokens": 13433,
+      "cost_usd": null
+    },
+    {
+      "task": "bn-fit-modify",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 294540,
+      "output_tokens": 10997,
+      "cost_usd": null
+    },
+    {
+      "task": "break-filter-js-from-html",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 58551,
+      "output_tokens": 9469,
+      "cost_usd": null
+    },
+    {
+      "task": "build-cython-ext",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 1761001,
+      "output_tokens": 10623,
+      "cost_usd": null
+    },
+    {
+      "task": "build-pmars",
+      "pass": true,
+      "reward": 1.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 3440112,
+      "output_tokens": 11481,
+      "cost_usd": null
+    },
+    {
+      "task": "build-pov-ray",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 352015,
+      "output_tokens": 2986,
+      "cost_usd": null
+    },
+    {
+      "task": "caffe-cifar-10",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 665295,
+      "output_tokens": 7603,
+      "cost_usd": null
+    },
+    {
+      "task": "cancel-async-tasks",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 39481,
+      "output_tokens": 4489,
+      "cost_usd": null
+    },
+    {
+      "task": "chess-best-move",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 183687,
+      "output_tokens": 19465,
+      "cost_usd": null
+    },
+    {
+      "task": "circuit-fibsqrt",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 57312,
+      "output_tokens": 33209,
+      "cost_usd": null
+    },
+    {
+      "task": "cobol-modernization",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 735170,
+      "output_tokens": 16205,
+      "cost_usd": null
+    },
+    {
+      "task": "code-from-image",
+      "pass": true,
+      "reward": 1.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 997119,
+      "output_tokens": 25727,
+      "cost_usd": null
+    },
+    {
+      "task": "compile-compcert",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 4007194,
+      "output_tokens": 35348,
+      "cost_usd": null
+    },
+    {
+      "task": "configure-git-webserver",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 69999,
+      "output_tokens": 2330,
+      "cost_usd": null
+    },
+    {
+      "task": "constraints-scheduling",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 38711,
+      "output_tokens": 4851,
+      "cost_usd": null
+    },
+    {
+      "task": "count-dataset-tokens",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 87151,
+      "output_tokens": 2275,
+      "cost_usd": null
+    },
+    {
+      "task": "crack-7z-hash",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 216817,
+      "output_tokens": 1843,
+      "cost_usd": null
+    },
+    {
+      "task": "custom-memory-heap-crash",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 353428,
+      "output_tokens": 35253,
+      "cost_usd": null
+    },
+    {
+      "task": "db-wal-recovery",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 706318,
+      "output_tokens": 8658,
+      "cost_usd": null
+    },
+    {
+      "task": "distribution-search",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 342657,
+      "output_tokens": 38942,
+      "cost_usd": null
+    },
+    {
+      "task": "dna-assembly",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 679689,
+      "output_tokens": 40635,
+      "cost_usd": null
+    },
+    {
+      "task": "dna-insert",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 502879,
+      "output_tokens": 14719,
+      "cost_usd": null
+    },
+    {
+      "task": "extract-elf",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 251979,
+      "output_tokens": 19665,
+      "cost_usd": null
+    },
+    {
+      "task": "extract-moves-from-video",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 815902,
+      "output_tokens": 10930,
+      "cost_usd": null
+    },
+    {
+      "task": "feal-differential-cryptanalysis",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 27155,
+      "output_tokens": 33028,
+      "cost_usd": null
+    },
+    {
+      "task": "feal-linear-cryptanalysis",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 106064,
+      "output_tokens": 25955,
+      "cost_usd": null
+    },
+    {
+      "task": "filter-js-from-html",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 32962,
+      "output_tokens": 3041,
+      "cost_usd": null
+    },
+    {
+      "task": "financial-document-processor",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 115570,
+      "output_tokens": 9267,
+      "cost_usd": null
+    },
+    {
+      "task": "fix-code-vulnerability",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 1153791,
+      "output_tokens": 5090,
+      "cost_usd": null
+    },
+    {
+      "task": "fix-git",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 32479,
+      "output_tokens": 1123,
+      "cost_usd": null
+    },
+    {
+      "task": "fix-ocaml-gc",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 5204440,
+      "output_tokens": 39260,
+      "cost_usd": null
+    },
+    {
+      "task": "gcode-to-text",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 563679,
+      "output_tokens": 13198,
+      "cost_usd": null
+    },
+    {
+      "task": "git-leak-recovery",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 25416,
+      "output_tokens": 1254,
+      "cost_usd": null
+    },
+    {
+      "task": "git-multibranch",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 339409,
+      "output_tokens": 8778,
+      "cost_usd": null
+    },
+    {
+      "task": "gpt2-codegolf",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 72252,
+      "output_tokens": 27990,
+      "cost_usd": null
+    },
+    {
+      "task": "headless-terminal",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 121640,
+      "output_tokens": 6749,
+      "cost_usd": null
+    },
+    {
+      "task": "hf-model-inference",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 170987,
+      "output_tokens": 3913,
+      "cost_usd": null
+    },
+    {
+      "task": "install-windows-3.11",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 701895,
+      "output_tokens": 15994,
+      "cost_usd": null
+    },
+    {
+      "task": "kv-store-grpc",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 88258,
+      "output_tokens": 2881,
+      "cost_usd": null
+    },
+    {
+      "task": "large-scale-text-editing",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 1297002,
+      "output_tokens": 20932,
+      "cost_usd": null
+    },
+    {
+      "task": "largest-eigenval",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 672816,
+      "output_tokens": 23391,
+      "cost_usd": null
+    },
+    {
+      "task": "llm-inference-batching-scheduler",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 891945,
+      "output_tokens": 18497,
+      "cost_usd": null
+    },
+    {
+      "task": "log-summary-date-ranges",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 207548,
+      "output_tokens": 3765,
+      "cost_usd": null
+    },
+    {
+      "task": "mailman",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 3040972,
+      "output_tokens": 33315,
+      "cost_usd": null
+    },
+    {
+      "task": "make-doom-for-mips",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 1941377,
+      "output_tokens": 6404,
+      "cost_usd": null
+    },
+    {
+      "task": "make-mips-interpreter",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 1508460,
+      "output_tokens": 19437,
+      "cost_usd": null
+    },
+    {
+      "task": "mcmc-sampling-stan",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 208764,
+      "output_tokens": 3666,
+      "cost_usd": null
+    },
+    {
+      "task": "merge-diff-arc-agi-task",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 404714,
+      "output_tokens": 9281,
+      "cost_usd": null
+    },
+    {
+      "task": "model-extraction-relu-logits",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 28138,
+      "output_tokens": 25864,
+      "cost_usd": null
+    },
+    {
+      "task": "modernize-scientific-stack",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 39813,
+      "output_tokens": 2319,
+      "cost_usd": null
+    },
+    {
+      "task": "mteb-leaderboard",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 14022,
+      "output_tokens": 446,
+      "cost_usd": null
+    },
+    {
+      "task": "mteb-retrieve",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 30898,
+      "output_tokens": 2011,
+      "cost_usd": null
+    },
+    {
+      "task": "multi-source-data-merger",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 62895,
+      "output_tokens": 3807,
+      "cost_usd": null
+    },
+    {
+      "task": "nginx-request-logging",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 118321,
+      "output_tokens": 3518,
+      "cost_usd": null
+    },
+    {
+      "task": "openssl-selfsigned-cert",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 93022,
+      "output_tokens": 4134,
+      "cost_usd": null
+    },
+    {
+      "task": "overfull-hbox",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 195798,
+      "output_tokens": 13998,
+      "cost_usd": null
+    },
+    {
+      "task": "password-recovery",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 839277,
+      "output_tokens": 19368,
+      "cost_usd": null
+    },
+    {
+      "task": "path-tracing",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 2825385,
+      "output_tokens": 22299,
+      "cost_usd": null
+    },
+    {
+      "task": "path-tracing-reverse",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 2583696,
+      "output_tokens": 15671,
+      "cost_usd": null
+    },
+    {
+      "task": "polyglot-c-py",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 2554,
+      "output_tokens": 16510,
+      "cost_usd": null
+    },
+    {
+      "task": "polyglot-rust-c",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 2564,
+      "output_tokens": 16580,
+      "cost_usd": null
+    },
+    {
+      "task": "portfolio-optimization",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 119527,
+      "output_tokens": 3708,
+      "cost_usd": null
+    },
+    {
+      "task": "protein-assembly",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 74075,
+      "output_tokens": 20500,
+      "cost_usd": null
+    },
+    {
+      "task": "prove-plus-comm",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 40979,
+      "output_tokens": 1989,
+      "cost_usd": null
+    },
+    {
+      "task": "pypi-server",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 78439,
+      "output_tokens": 2342,
+      "cost_usd": null
+    },
+    {
+      "task": "pytorch-model-cli",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 759745,
+      "output_tokens": 22568,
+      "cost_usd": null
+    },
+    {
+      "task": "pytorch-model-recovery",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 102446,
+      "output_tokens": 5043,
+      "cost_usd": null
+    },
+    {
+      "task": "qemu-alpine-ssh",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "NonZeroAgentExitCodeError",
+      "input_tokens": 35343,
+      "output_tokens": 2325,
+      "cost_usd": null
+    },
+    {
+      "task": "qemu-startup",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 459030,
+      "output_tokens": 14537,
+      "cost_usd": null
+    },
+    {
+      "task": "query-optimize",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 130196,
+      "output_tokens": 4752,
+      "cost_usd": null
+    },
+    {
+      "task": "raman-fitting",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 509521,
+      "output_tokens": 14708,
+      "cost_usd": null
+    },
+    {
+      "task": "regex-chess",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 3172256,
+      "output_tokens": 74034,
+      "cost_usd": null
+    },
+    {
+      "task": "regex-log",
+      "pass": true,
+      "reward": 1.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 399899,
+      "output_tokens": 25803,
+      "cost_usd": null
+    },
+    {
+      "task": "reshard-c4-data",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 1158852,
+      "output_tokens": 21631,
+      "cost_usd": null
+    },
+    {
+      "task": "rstan-to-pystan",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 2154533,
+      "output_tokens": 31775,
+      "cost_usd": null
+    },
+    {
+      "task": "sam-cell-seg",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 3539625,
+      "output_tokens": 22971,
+      "cost_usd": null
+    },
+    {
+      "task": "sanitize-git-repo",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 177719,
+      "output_tokens": 5088,
+      "cost_usd": null
+    },
+    {
+      "task": "schemelike-metacircular-eval",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 361246,
+      "output_tokens": 37995,
+      "cost_usd": null
+    },
+    {
+      "task": "sparql-university",
+      "pass": true,
+      "reward": 1.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 541690,
+      "output_tokens": 23451,
+      "cost_usd": null
+    },
+    {
+      "task": "sqlite-db-truncate",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 293805,
+      "output_tokens": 19628,
+      "cost_usd": null
+    },
+    {
+      "task": "sqlite-with-gcov",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 86647,
+      "output_tokens": 1796,
+      "cost_usd": null
+    },
+    {
+      "task": "torch-pipeline-parallelism",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 41648,
+      "output_tokens": 17642,
+      "cost_usd": null
+    },
+    {
+      "task": "torch-tensor-parallelism",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 357900,
+      "output_tokens": 26359,
+      "cost_usd": null
+    },
+    {
+      "task": "train-fasttext",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 2040419,
+      "output_tokens": 10151,
+      "cost_usd": null
+    },
+    {
+      "task": "tune-mjcf",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 387968,
+      "output_tokens": 17376,
+      "cost_usd": null
+    },
+    {
+      "task": "video-processing",
+      "pass": false,
+      "reward": 0.0,
+      "exception": null,
+      "input_tokens": 1737589,
+      "output_tokens": 39817,
+      "cost_usd": null
+    },
+    {
+      "task": "vulnerable-secret",
+      "pass": true,
+      "reward": 1.0,
+      "exception": null,
+      "input_tokens": 157973,
+      "output_tokens": 15608,
+      "cost_usd": null
+    },
+    {
+      "task": "winning-avg-corewars",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 209893,
+      "output_tokens": 66142,
+      "cost_usd": null
+    },
+    {
+      "task": "write-compressor",
+      "pass": false,
+      "reward": 0.0,
+      "exception": "AgentTimeoutError",
+      "input_tokens": 389159,
+      "output_tokens": 24870,
+      "cost_usd": null
+    }
+  ]
+}

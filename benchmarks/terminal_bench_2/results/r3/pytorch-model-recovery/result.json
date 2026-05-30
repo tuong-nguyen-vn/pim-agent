@@ -1,0 +1,111 @@
+{
+    "id": "f54a4964-b5b8-4757-9660-ac778dbf8976",
+    "task_name": "pytorch-model-recovery",
+    "trial_name": "pytorch-model-recovery__8R9ScKK",
+    "trial_uri": "file:///home/htpc/Desktop/dev/pim-agent/benchmarks/terminal_bench_2/runs/r3/2026-05-29__23-16-57/pytorch-model-recovery__8R9ScKK",
+    "task_id": {
+        "git_url": "https://github.com/laude-institute/terminal-bench-2.git",
+        "git_commit_id": "69671fbaac6d67a7ef0dfec016cc38a64ef7a77c",
+        "path": "pytorch-model-recovery"
+    },
+    "source": "terminal-bench",
+    "task_checksum": "9def2a29a9f98ee4ae428cc23e473a889f9f4fd87a62ea685a04192a6aefe20f",
+    "config": {
+        "task": {
+            "path": "pytorch-model-recovery",
+            "git_url": "https://github.com/laude-institute/terminal-bench-2.git",
+            "git_commit_id": "69671fbaac6d67a7ef0dfec016cc38a64ef7a77c",
+            "name": null,
+            "ref": null,
+            "overwrite": false,
+            "download_dir": null,
+            "source": "terminal-bench"
+        },
+        "trial_name": "pytorch-model-recovery__8R9ScKK",
+        "trials_dir": "benchmarks/terminal_bench_2/runs/r3/2026-05-29__23-16-57",
+        "timeout_multiplier": 1.0,
+        "agent_timeout_multiplier": null,
+        "verifier_timeout_multiplier": null,
+        "agent_setup_timeout_multiplier": null,
+        "environment_build_timeout_multiplier": null,
+        "agent": {
+            "name": null,
+            "import_path": "benchmarks.terminal_bench_2.adapter:PimAgent",
+            "model_name": "ollama/Qwen3.6-35B-A3B-UD-Q6_K_XL",
+            "skills": [],
+            "override_timeout_sec": null,
+            "override_setup_timeout_sec": null,
+            "max_timeout_sec": null,
+            "kwargs": {},
+            "env": {},
+            "mcp_servers": []
+        },
+        "environment": {
+            "type": "docker",
+            "import_path": null,
+            "force_build": false,
+            "delete": true,
+            "override_cpus": null,
+            "override_memory_mb": null,
+            "override_storage_mb": null,
+            "override_gpus": null,
+            "suppress_override_warnings": false,
+            "mounts": null,
+            "extra_docker_compose": [
+                "/home/htpc/Desktop/dev/pim-agent/benchmarks/terminal_bench_2/overlay.yaml"
+            ],
+            "env": {},
+            "kwargs": {}
+        },
+        "verifier": {
+            "override_timeout_sec": null,
+            "max_timeout_sec": null,
+            "env": {},
+            "disable": false
+        },
+        "artifacts": [],
+        "extra_instruction_paths": [],
+        "job_id": "274a429d-6c48-46af-855b-fa86c8bfe56d"
+    },
+    "agent_info": {
+        "name": "pim",
+        "version": "0.78.0",
+        "model_info": {
+            "name": "Qwen3.6-35B-A3B-UD-Q6_K_XL",
+            "provider": "ollama"
+        }
+    },
+    "agent_result": {
+        "n_input_tokens": 102446,
+        "n_cache_tokens": 90439,
+        "n_output_tokens": 5043,
+        "cost_usd": null,
+        "rollout_details": null,
+        "metadata": null
+    },
+    "verifier_result": {
+        "rewards": {
+            "reward": 1.0
+        }
+    },
+    "exception_info": null,
+    "started_at": "2026-05-30T12:28:23.494866Z",
+    "finished_at": "2026-05-30T12:33:58.075404Z",
+    "environment_setup": {
+        "started_at": "2026-05-30T12:28:23.500953Z",
+        "finished_at": "2026-05-30T12:29:32.246959Z"
+    },
+    "agent_setup": {
+        "started_at": "2026-05-30T12:29:32.246976Z",
+        "finished_at": "2026-05-30T12:29:42.258934Z"
+    },
+    "agent_execution": {
+        "started_at": "2026-05-30T12:29:42.258989Z",
+        "finished_at": "2026-05-30T12:33:13.303710Z"
+    },
+    "verifier": {
+        "started_at": "2026-05-30T12:33:13.513677Z",
+        "finished_at": "2026-05-30T12:33:44.553117Z"
+    },
+    "step_results": null
+}
