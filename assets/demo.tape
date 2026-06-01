@@ -11,7 +11,6 @@ Set Height 800
 Set Padding 0
 Set WindowBar "Colorful"
 Set Theme "Dracula"
-Set PlaybackSpeed 2
 
 Sleep 250ms
 Type "pim" 
@@ -19,7 +18,7 @@ Sleep 250ms
 Enter
 Sleep 1500ms
 
-Type@30ms "Research about Pi from the web and Pim from this codebase, then tell me as concisely as possible what Pim is."
+Type "See which file/function will benefit the most from a unit test. Then write one for it."
 Sleep 250ms
 Enter
-Sleep 30s
+Sleep 180s
