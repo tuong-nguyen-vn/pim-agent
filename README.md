@@ -216,9 +216,11 @@ For development, run standalone with `pim --mode telegram` instead.
 
 ### Features
 
-- **Scheduled tasks** - your bot can create one-time, interval, or cron-based tasks that fire automatically; ask your bot to schedule something.
-- **Rich media** - send photos, documents, videos, audio, and voice messages directly in chat; your bot can also send files back to you.
-- **Thread-specific prompts** - each chat (or thread) gets its own session and instructions; ask your bot to modify its instructions.
+- ⏰ **Scheduled tasks** - your bot can create one-time, interval, or cron-based tasks that fire automatically; ask your bot to schedule something.
+- 👀 **Live progress logs** - use `/logs` to choose what you see while the agent works: final replies, tool use, intermediate text, or thinking.
+- 📝 **Markdown formatting** - replies render Markdown out of the box, including tables converted to vertical lists for Telegram.
+- 📎 **Rich media** - send photos, documents, videos, audio, and voice messages directly in chat; your bot can also send files back to you.
+- 🧵 **Thread-specific prompts** - each chat (or thread) gets its own session and optional instructions; ask your bot to modify its instructions.
 
 ## Developing
 
