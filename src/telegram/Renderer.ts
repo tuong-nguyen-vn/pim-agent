@@ -2,8 +2,12 @@ import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { GrammyError, type Api } from "grammy";
 import { basename } from "node:path";
 
+import type { ApplyEntry } from "../extensions/apply-patch/executor";
 import type { SubagentDetails } from "../extensions/subagent/subagent";
 import type { TodoInput } from "../extensions/todo/schema";
+import type { ToolDiff } from "../shared/DiffLines";
+import { DiffView, type DiffStats } from "../shared/DiffView";
+import { type PatchOp, PatchSummary } from "../shared/PatchSummary";
 import type { LogsMode } from "./Config";
 import { Markdown } from "./Markdown";
 import type { Session, SessionId } from "./Session";
@@ -15,15 +19,30 @@ type TurnState = TurnEndState | "running";
 type TrackerEntry = {
   readonly key: string;
   readonly kind: "tool" | "todo" | "thinking" | "narration";
-  readonly emoji: string;
+  emoji: string;
   label: string;
   state: "running" | "ok" | "error";
+  // Plaintext "+4/-3" appended after the label once the tool finishes.
+  stats?: string;
 };
+
+type ApplyOp = {
+  readonly emoji: string;
+  readonly text: string;
+};
+
+const EDIT_EMOJI = "✏️";
+const DELETE_EMOJI = "🗑️";
+const ARROW = "➝";
+
+// Keys an apply_patch tool call may carry its patch text under (canonical first).
+const PATCH_TEXT_KEYS = ["input", "patch", "patchText", "patch_text"] as const;
 
 const TOOL_EMOJI: Record<string, string> = {
   read: "📄",
-  edit: "✏️",
-  write: "✏️",
+  edit: EDIT_EMOJI,
+  write: EDIT_EMOJI,
+  apply_patch: EDIT_EMOJI,
   bash: "⚡️",
   grep: "🔎",
   glob: "🔎",
@@ -130,6 +149,9 @@ export class Renderer {
         return;
       }
       this.updateSubagentLabel(event.toolCallId, event.toolName, event.result);
+      if (!event.isError) {
+        this.applyDiffStats(event.toolCallId, event.toolName, event.result);
+      }
       const idx = this.toolIndex.get(event.toolCallId);
       if (idx !== undefined) {
         this.entries[idx]!.state = event.isError ? "error" : "ok";
@@ -176,6 +198,21 @@ export class Renderer {
         label: content,
         state: "ok",
       });
+      this.scheduleEdit();
+      return;
+    }
+    if (name === "apply_patch") {
+      const { emoji, label } = Renderer.buildApplyEntry(
+        Renderer.applyOpsFromArgs(args)
+      );
+      this.entries.push({
+        key: toolCallId,
+        kind: "tool",
+        emoji,
+        label,
+        state: "running",
+      });
+      this.toolIndex.set(toolCallId, this.entries.length - 1);
       this.scheduleEdit();
       return;
     }
@@ -232,6 +269,42 @@ export class Renderer {
     }
     this.entries[idx]!.label = next;
     this.scheduleEdit();
+  }
+
+  private applyDiffStats(
+    toolCallId: string,
+    toolName: string,
+    result: unknown
+  ): void {
+    const idx = this.toolIndex.get(toolCallId);
+    if (idx === undefined) {
+      return;
+    }
+    const name = toolName.toLowerCase();
+    const details = (result as { readonly details?: unknown } | null)?.details;
+    if (name === "edit" || name === "write") {
+      const diff = (details as { readonly diff?: ToolDiff } | undefined)?.diff;
+      const stats = Renderer.formatPlainStats(DiffView.countStats(diff));
+      if (stats) {
+        this.entries[idx]!.stats = stats;
+        this.scheduleEdit();
+      }
+      return;
+    }
+    if (name === "apply_patch") {
+      const entries = (
+        details as { readonly entries?: readonly ApplyEntry[] } | undefined
+      )?.entries;
+      if (!entries) {
+        return;
+      }
+      const built = Renderer.buildApplyEntry(
+        Renderer.applyOpsFromEntries(entries)
+      );
+      this.entries[idx]!.emoji = built.emoji;
+      this.entries[idx]!.label = built.label;
+      this.scheduleEdit();
+    }
   }
 
   private flushThinking(): void {
@@ -370,7 +443,8 @@ export class Renderer {
         } else if (state === "running" && isLastEntry) {
           suffix = " 🟡";
         }
-        pieces.push(`${entry.emoji} ${entry.label}${suffix}`);
+        const stats = entry.stats ? ` ${entry.stats}` : "";
+        pieces.push(`${entry.emoji} ${entry.label}${stats}${suffix}`);
       }
       const next = visible[i + 1];
       if (next) {
@@ -488,6 +562,118 @@ export class Renderer {
       clearTimeout(this.editTimer);
       this.editTimer = undefined;
     }
+  }
+
+  private static buildApplyEntry(ops: readonly ApplyOp[]): {
+    readonly emoji: string;
+    readonly label: string;
+  } {
+    const [first, ...rest] = ops;
+    if (!first) {
+      return { emoji: EDIT_EMOJI, label: "" };
+    }
+    const label = [
+      first.text,
+      ...rest.map((op) => `${op.emoji} ${op.text}`),
+    ].join("\n");
+    return { emoji: first.emoji, label };
+  }
+
+  private static applyOpsFromArgs(args: unknown): readonly ApplyOp[] {
+    const text = Renderer.patchTextFromArgs(args);
+    if (!text) {
+      return [];
+    }
+    return PatchSummary.fromText(text).map((op) => Renderer.opFromSummary(op));
+  }
+
+  private static applyOpsFromEntries(
+    entries: readonly ApplyEntry[]
+  ): readonly ApplyOp[] {
+    return entries
+      .filter(
+        (entry) => !(entry.action.kind === "update" && entry.diff === undefined)
+      )
+      .map((entry) => Renderer.opFromEntry(entry));
+  }
+
+  private static opFromSummary(op: PatchOp): ApplyOp {
+    const isMove = op.movePath !== undefined && op.movePath !== op.path;
+    return Renderer.applyOp({
+      kind: isMove ? "move" : op.kind,
+      path: op.path,
+      movePath: op.movePath,
+    });
+  }
+
+  private static opFromEntry(entry: ApplyEntry): ApplyOp {
+    return Renderer.applyOp({
+      kind: entry.action.kind,
+      path: entry.action.path,
+      movePath: entry.action.movePath,
+      stats: Renderer.formatPlainStats(DiffView.countStats(entry.diff)),
+    });
+  }
+
+  private static applyOp(params: {
+    readonly kind: "add" | "delete" | "move" | "update";
+    readonly path: string;
+    readonly movePath?: string;
+    readonly stats?: string;
+  }): ApplyOp {
+    const suffix = params.stats ? ` ${params.stats}` : "";
+    if (params.kind === "delete") {
+      return {
+        emoji: DELETE_EMOJI,
+        text: `${Renderer.codeName(params.path)}${suffix}`,
+      };
+    }
+    if (params.kind === "move") {
+      return {
+        emoji: EDIT_EMOJI,
+        text: `${Renderer.moveText(params.path, params.movePath ?? params.path)}${suffix}`,
+      };
+    }
+    return {
+      emoji: EDIT_EMOJI,
+      text: `${Renderer.codeName(params.path)}${suffix}`,
+    };
+  }
+
+  private static moveText(from: string, to: string): string {
+    return `${Renderer.codeName(from)} ${ARROW} ${Renderer.codeName(to)}`;
+  }
+
+  private static codeName(path: string): string {
+    return `<code>${Markdown.escape(basename(path))}</code>`;
+  }
+
+  private static patchTextFromArgs(args: unknown): string | undefined {
+    if (typeof args === "string") {
+      return args;
+    }
+    if (!args || typeof args !== "object") {
+      return undefined;
+    }
+    const record = args as Record<string, unknown>;
+    for (const key of PATCH_TEXT_KEYS) {
+      const value = record[key];
+      if (typeof value === "string" && value) {
+        return value;
+      }
+    }
+    return undefined;
+  }
+
+  private static formatPlainStats(stats: DiffStats): string {
+    const parts: string[] = [];
+    if (stats.added > 0) {
+      parts.push(`+${stats.added}`);
+    }
+    if (stats.removed > 0) {
+      parts.push(`-${stats.removed}`);
+    }
+    return parts.join("/");
   }
 
   private static toolLabel(toolName: string, args: unknown): string {

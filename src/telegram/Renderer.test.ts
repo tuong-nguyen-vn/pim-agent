@@ -114,6 +114,252 @@ async function flush(renderer: Renderer): Promise<void> {
   ).flushEdit("running");
 }
 
+function applyPatchStart(
+  input: unknown,
+  toolCallId = "ap-1"
+): AgentSessionEvent {
+  return {
+    type: "tool_execution_start",
+    toolCallId,
+    toolName: "apply_patch",
+    args: input,
+  } as AgentSessionEvent;
+}
+
+function applyPatchEnd(
+  entries: readonly unknown[],
+  toolCallId = "ap-1"
+): AgentSessionEvent {
+  return {
+    type: "tool_execution_end",
+    toolCallId,
+    toolName: "apply_patch",
+    result: { content: [], details: { entries } },
+    isError: false,
+  } as AgentSessionEvent;
+}
+
+function toolStart(
+  toolName: string,
+  args: unknown,
+  toolCallId: string
+): AgentSessionEvent {
+  return {
+    type: "tool_execution_start",
+    toolCallId,
+    toolName,
+    args,
+  } as AgentSessionEvent;
+}
+
+function toolEndWithDiff(
+  toolName: string,
+  diff: unknown,
+  toolCallId: string
+): AgentSessionEvent {
+  return {
+    type: "tool_execution_end",
+    toolCallId,
+    toolName,
+    result: { content: [], details: { diff } },
+    isError: false,
+  } as AgentSessionEvent;
+}
+
+// countStats only reads diff.hunks[].lines[].kind, so a minimal shape suffices.
+function fakeDiff(added: number, removed: number): unknown {
+  return {
+    hunks: [
+      {
+        lines: [
+          ...Array.from({ length: added }, () => ({ kind: "added" })),
+          ...Array.from({ length: removed }, () => ({ kind: "removed" })),
+        ],
+      },
+    ],
+  };
+}
+
+describe("Telegram Renderer apply_patch status", () => {
+  test("labels a single update with the edit emoji and basename", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input:
+          "*** Begin Patch\n*** Update File: src/foo.ts\n@@\n-const a = 1\n+const a = 2\n*** End Patch",
+      })
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["✏️ <code>foo.ts</code>"]);
+  });
+
+  test("labels a delete with the trash emoji", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input: "*** Begin Patch\n*** Delete File: src/old.ts\n*** End Patch",
+      })
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["🗑️ <code>old.ts</code>"]);
+  });
+
+  test("labels a rename with the edit emoji and an arrow", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input:
+          "*** Begin Patch\n*** Update File: src/a.ts\n*** Move to: src/b.ts\n*** End Patch",
+      })
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual([
+      "✏️ <code>a.ts</code> ➝ <code>b.ts</code>",
+    ]);
+  });
+
+  test("refines a move with the arrow and line stats on finish", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input:
+          "*** Begin Patch\n*** Update File: src/a.ts\n*** Move to: src/b.ts\n@@\n-x\n+y\n*** End Patch",
+      })
+    );
+    renderer.handleEvent(
+      applyPatchEnd([
+        {
+          action: { kind: "move", path: "src/a.ts", movePath: "src/b.ts" },
+          diff: fakeDiff(1, 1),
+        },
+      ])
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual([
+      "✏️ <code>a.ts</code> ➝ <code>b.ts</code> +1/-1",
+    ]);
+  });
+
+  test("renders one line per file for a mixed multi-file patch", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input: [
+          "*** Begin Patch",
+          "*** Update File: src/config.ts",
+          "@@",
+          "-old",
+          "+new",
+          "*** Delete File: src/legacy.ts",
+          "*** Update File: src/a.ts",
+          "*** Move to: src/b.ts",
+          "*** End Patch",
+        ].join("\n"),
+      })
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual([
+      [
+        "✏️ <code>config.ts</code>",
+        "🗑️ <code>legacy.ts</code>",
+        "✏️ <code>a.ts</code> ➝ <code>b.ts</code>",
+      ].join("\n"),
+    ]);
+  });
+
+  test("appends line stats from the result once the patch finishes", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input:
+          "*** Begin Patch\n*** Update File: src/foo.ts\n@@\n-const a = 1\n+const a = 2\n*** End Patch",
+      })
+    );
+    renderer.handleEvent(
+      applyPatchEnd([
+        {
+          action: { kind: "update", path: "src/foo.ts" },
+          diff: fakeDiff(2, 3),
+        },
+      ])
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual([
+      "✏️ <code>foo.ts</code> +2/-3",
+    ]);
+  });
+
+  test("shows a removal-only stat for a delete result", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input: "*** Begin Patch\n*** Delete File: src/old.ts\n*** End Patch",
+      })
+    );
+    renderer.handleEvent(
+      applyPatchEnd([
+        {
+          action: { kind: "delete", path: "src/old.ts" },
+          diff: fakeDiff(0, 5),
+        },
+      ])
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["🗑️ <code>old.ts</code> -5"]);
+  });
+
+  test("falls back to the filename when the patch text does not parse", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart({
+        input:
+          "*** Begin Patch\n*** Update File: src/weird.ts\n(garbage)\n*** End Patch",
+      })
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["✏️ <code>weird.ts</code>"]);
+  });
+
+  test("accepts a bare-string patch argument", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(
+      applyPatchStart(
+        "*** Begin Patch\n*** Delete File: src/old.ts\n*** End Patch"
+      )
+    );
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["🗑️ <code>old.ts</code>"]);
+  });
+});
+
+describe("Telegram Renderer edit/write stats", () => {
+  test("appends +added/-removed to an edit once it finishes", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(toolStart("edit", { path: "src/foo.ts" }, "e-1"));
+    renderer.handleEvent(toolEndWithDiff("edit", fakeDiff(2, 1), "e-1"));
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual([
+      "✏️ <code>foo.ts</code> +2/-1",
+    ]);
+  });
+
+  test("shows an addition-only stat for a write", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(toolStart("write", { path: "src/bar.ts" }, "w-1"));
+    renderer.handleEvent(toolEndWithDiff("write", fakeDiff(4, 0), "w-1"));
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["✏️ <code>bar.ts</code> +4"]);
+  });
+
+  test("omits stats when the write made no content changes", async () => {
+    const { api, renderer } = makeRenderer();
+    renderer.handleEvent(toolStart("write", { path: "src/bar.ts" }, "w-2"));
+    renderer.handleEvent(toolEndWithDiff("write", undefined, "w-2"));
+    await renderer.finish("", "ok");
+    expect(api.sent.map((m) => m.text)).toEqual(["✏️ <code>bar.ts</code>"]);
+  });
+});
+
 describe("Telegram Renderer todo status", () => {
   test("renders the latest in-progress todo in bold", async () => {
     const { api, renderer } = makeRenderer();

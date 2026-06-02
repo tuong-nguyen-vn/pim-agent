@@ -11,14 +11,9 @@ import {
   DiffView,
 } from "../../shared/DiffView";
 import { Paths } from "../../shared/Paths";
+import { PatchSummary } from "../../shared/PatchSummary";
 import { type RenderContext, Renderer } from "../../shared/Renderer";
 import type { ApplyEntry } from "./executor";
-import {
-  ADD_FILE_MARKER,
-  cleanPath,
-  DELETE_FILE_MARKER,
-  UPDATE_FILE_MARKER,
-} from "./parser";
 
 const ERROR_PREVIEW_LINES = 12;
 // Rename separator. ➝ (U+279D) reads more vertically centered than → in most
@@ -51,7 +46,7 @@ export function renderApplyPatchCall(
   context: ApplyPatchRenderContext
 ): Component {
   const input = typeof args?.input === "string" ? args.input : undefined;
-  const firstPath = input ? affectedPaths(input)[0] : undefined;
+  const firstPath = input ? PatchSummary.firstPath(input) : undefined;
   return DiffView.renderDiffCall({
     label: "Edit",
     rawPath: firstPath ? Paths.resolve(firstPath, context.cwd) : undefined,
@@ -263,24 +258,4 @@ export function renderApplyPatchResult(
 
   container.invalidate();
   return container;
-}
-
-const FILE_MARKERS = [
-  ADD_FILE_MARKER,
-  DELETE_FILE_MARKER,
-  UPDATE_FILE_MARKER,
-] as const;
-
-function affectedPaths(input: string): readonly string[] {
-  const paths: string[] = [];
-  for (const raw of input.split("\n")) {
-    const line = raw.trim();
-    for (const marker of FILE_MARKERS) {
-      if (line.startsWith(marker)) {
-        paths.push(cleanPath(line.slice(marker.length)));
-        break;
-      }
-    }
-  }
-  return paths;
 }
