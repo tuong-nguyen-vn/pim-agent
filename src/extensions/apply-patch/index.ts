@@ -58,7 +58,8 @@ export default function (pi: ExtensionAPI): void {
 
   const reconcile = (isGpt: boolean): void => {
     const active = pi.getActiveTools();
-    const next = computeActiveTools(active, isGpt);
+    const available = pi.getAllTools().map((tool) => tool.name);
+    const next = computeActiveTools(available, active, isGpt);
     if (next !== active) {
       pi.setActiveTools([...next]);
     }
