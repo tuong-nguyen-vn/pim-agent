@@ -1,0 +1,250 @@
+edit / apply_patch / hashline  —  1080 runs, 5 model(s)
+
+  lane          n   pass%  1st%  calls   err  clean%      in     out    cost$   dur(s)
+
+anthropic/claude-opus-4-8
+  edit         72     99%  100%    1.6   0.0    100%    4034     511  0.03413    10.05
+  apply_patch  72     94%  100%    1.8   0.0       -    3773     506  0.03264    10.53
+  hashline     72     99%   99%    2.0   0.0       -   10161     554  0.03704    11.16
+    Δ (edit−apply_patch): pass +4pp, out +5 tok, cost +0.0015$
+    Δ (edit−hashline): pass +0pp, out -43 tok, cost -0.0029$
+    hashline errors: other:1
+
+google/gemini-3.5-flash
+  edit         72    100%  100%    1.6   0.0    100%   10538    1010  0.02413     8.38
+  apply_patch  72     97%    0%    5.8   3.6       -  144716    6458  0.16002    38.33
+  hashline     72    100%   97%    1.6   0.0       -   13270     939  0.02790     7.59
+    Δ (edit−apply_patch): pass +3pp, out -5449 tok, cost -0.1359$
+    Δ (edit−hashline): pass +0pp, out +70 tok, cost -0.0038$
+    apply_patch errors: context_mismatch:143, malformed_patch:117, wrong_op:2
+    hashline errors: stale_anchor:2
+
+ollama/Qwen-3.6-35B
+  edit         72    100%   96%    1.6   0.0    100%    7152     597        0    23.08
+  apply_patch  72     50%    0%   12.0  10.7       -   46509    2723        0    98.29
+  hashline     72     97%   90%    1.9   0.2       -   11272     632        0    26.16
+    Δ (edit−apply_patch): pass +50pp, out -2126 tok, cost +0.0000$
+    Δ (edit−hashline): pass +3pp, out -35 tok, cost +0.0000$
+    edit errors: identical:3
+    apply_patch errors: malformed_patch:683, context_mismatch:90
+    hashline errors: ambiguous:6, other:5, stale_anchor:1
+
+openai-codex/gpt-5.5
+  edit         72    100%  100%    1.6   0.0    100%    4552     287  0.02745    11.91
+  apply_patch  72    100%  100%    1.0   0.0       -    4193     255  0.02501    11.84
+  hashline     72    100%  100%    1.6   0.0       -    7212     212  0.02972    10.86
+    Δ (edit−apply_patch): pass +0pp, out +32 tok, cost +0.0024$
+    Δ (edit−hashline): pass +0pp, out +75 tok, cost -0.0023$
+
+opencode-go/deepseek-v4-flash
+  edit         72    100%  100%    1.9   0.3    100%    8098     761  0.00061    10.67
+  apply_patch  72     61%    0%   12.8  10.1       -  176534    4468  0.00297    63.29
+  hashline     72     96%   93%    1.9   0.3       -   12130     707  0.00076    10.04
+    Δ (edit−apply_patch): pass +39pp, out -3707 tok, cost -0.0024$
+    Δ (edit−hashline): pass +4pp, out +54 tok, cost -0.0002$
+    edit errors: ambiguous:16, identical:5
+    apply_patch errors: malformed_patch:530, context_mismatch:192, noop:7
+    hashline errors: ambiguous:21
+
+pass%  - final file matches golden
+1st%   - first tool call applied cleanly
+calls  - mean tool calls
+err    - mean failed calls
+clean% - share of applied edits that matched exactly, no fuzzy rescue (edit only)
+
+Per task, one row per lane · Δin = input-token delta, Δout = output-token delta, Δcost$ = cost delta, all vs the `edit` baseline (− means leaner/cheaper than edit):
+
+anthropic/claude-opus-4-8
+  task                   axis           lane          pass  calls     in     Δin    out    Δout   Δcost$
+  rewrite-body           block          edit          100%    1.0   3984       -    433       -        -
+                                        apply_patch   100%    1.0   3511    -472    456     +23 -0.00104
+                                        hashline      100%    1.2   9043   +5059    452     +19 -0.00185
+  duplicate-blocks       context-ratio  edit          100%    1.0   3588       -    243       -        -
+                                        apply_patch   100%    1.0   3105    -483    222     -22 -0.00246
+                                        hashline      100%    1.3   9161   +5574    247      +3 -0.00146
+  repetitive-list        context-ratio  edit          100%    1.0   4145       -    304       -        -
+                                        apply_patch   100%    1.0   3663    -482    242     -62 -0.00367
+                                        hashline      100%    1.3  10130   +5985    273     -31 -0.00128
+  repetitive-list-large  context-ratio  edit          100%    1.0   7449       -    324       -        -
+                                        apply_patch   100%    1.0   6966    -483    264     -60 -0.00364
+                                        hashline      100%    1.5  17580  +10131    312     -13 +0.00885
+  many-field-edits       edit-density   edit          100%    1.0   7597       -   1715       -        -
+                                        apply_patch   100%    2.8   6410   -1187   1168    -547 -0.01481
+                                        hashline      100%    1.0  13504   +5907    899    -815 -0.01885
+  delete-function        format         edit          100%    1.0   3603       -    217       -        -
+                                        apply_patch   100%    1.0   3119    -484    235     +18 -0.00129
+                                        hashline      100%    1.7   7246   +3643    297     +80 +0.01260
+  long-file              format         edit          100%    1.0   1765       -    196       -        -
+                                        apply_patch   100%    2.0   1524    -241    293     +97 +0.00158
+                                        hashline      100%    1.0   4999   +3234    266     +71 -0.00007
+  rename-in-file         format         edit           83%    1.3   4354       -    647       -        -
+                                        apply_patch    33%    1.0   3150   -1203    669     +23 -0.00320
+                                        hashline       83%    2.8  13234   +8881   1146    +500 +0.01494
+  scattered-edits        format         edit          100%    1.0   1777       -    201       -        -
+                                        apply_patch   100%    1.0   3269   +1492    249     +49 +0.00149
+                                        hashline      100%    1.5   8861   +7084    402    +201 +0.00650
+  single-edit            format         edit          100%    1.0   1700       -    153       -        -
+                                        apply_patch   100%    1.0   3070   +1370    228     +75 +0.00203
+                                        hashline      100%    1.8  10669   +8969    356    +203 +0.00642
+  multifile-rename       multifile      edit          100%    3.0   4001       -    675       -        -
+                                        apply_patch   100%    3.0   3519    -482    708     +34 -0.00072
+                                        hashline      100%    3.0   8505   +4504    697     +22 +0.00007
+  multifile-rename-wide  multifile      edit          100%    6.0   4449       -   1029       -        -
+                                        apply_patch   100%    6.0   3967    -482   1342    +313 +0.00796
+                                        hashline      100%    6.0   8998   +4549   1300    +270 +0.00912
+
+google/gemini-3.5-flash
+  task                   axis           lane          pass  calls     in     Δin    out    Δout   Δcost$
+  rewrite-body           block          edit          100%    1.0   6725       -    804       -        -
+                                        apply_patch   100%    4.5 126392 +119667   5837   +5034 +0.12539
+                                        hashline      100%    1.0   7965   +1240    700    -104 +0.00093
+  duplicate-blocks       context-ratio  edit          100%    1.0   5714       -    699       -        -
+                                        apply_patch   100%    4.7  22532  +16818   3308   +2609 +0.04357
+                                        hashline      100%    1.0   6811   +1097    492    -206 -0.00021
+  repetitive-list        context-ratio  edit          100%    1.0   6821       -    592       -        -
+                                        apply_patch    83%    6.0 125312 +118491   6664   +6073 +0.13101
+                                        hashline      100%    1.0   7609    +788    404    -188 -0.00051
+  repetitive-list-large  context-ratio  edit          100%    1.0  18429       -    761       -        -
+                                        apply_patch   100%    7.2 204460 +186032   8072   +7312 +0.24829
+                                        hashline      100%    1.0  17204   -1224    516    -245 -0.00042
+  many-field-edits       edit-density   edit          100%    1.0  25428       -   3264       -        -
+                                        apply_patch    83%   11.7 635282 +609854  17049  +13785 +0.40753
+                                        hashline      100%    1.3  27163   +1734   3753    +489 +0.00700
+  delete-function        format         edit          100%    1.0   7126       -   1252       -        -
+                                        apply_patch   100%    3.3  84298  +77173   5900   +4648 +0.10343
+                                        hashline      100%    1.0   9385   +2260   1076    -176 +0.00181
+  long-file              format         edit          100%    1.0   6767       -    494       -        -
+                                        apply_patch   100%    5.0 279621 +272854   9530   +9037 +0.23371
+                                        hashline      100%    1.0   7467    +700    458     -36 +0.00072
+  rename-in-file         format         edit          100%    1.2   7183       -    899       -        -
+                                        apply_patch   100%    5.5  46414  +39231   4401   +3502 +0.06049
+                                        hashline      100%    1.0   9415   +2231    880     -20 +0.00317
+  scattered-edits        format         edit          100%    1.0   5806       -    533       -        -
+                                        apply_patch   100%    6.3  57134  +51328   4835   +4302 +0.10075
+                                        hashline      100%    1.0   6712    +906    508     -26 +0.00113
+  single-edit            format         edit          100%    1.0   4520       -    387       -        -
+                                        apply_patch   100%    3.7  12234   +7714   1706   +1319 +0.02344
+                                        hashline      100%    1.0   5997   +1477    300     -87 +0.00143
+  multifile-rename       multifile      edit          100%    3.0   9979       -    967       -        -
+                                        apply_patch   100%    5.0  44062  +34083   3982   +3015 +0.05178
+                                        hashline      100%    3.0  17037   +7058    923     -45 +0.01018
+  multifile-rename-wide  multifile      edit          100%    6.0  21963       -   1466       -        -
+                                        apply_patch   100%    6.2  98845  +76882   6216   +4750 +0.10124
+                                        hashline      100%    6.0  36483  +14520   1265    -202 +0.01997
+
+ollama/Qwen-3.6-35B
+  task                   axis           lane          pass  calls     in     Δin    out    Δout   Δcost$
+  rewrite-body           block          edit          100%    1.0   6674       -    455       -        -
+                                        apply_patch    17%    8.5  28285  +21611   2984   +2529 +0.00000
+                                        hashline      100%    1.0  10082   +3408    437     -18 +0.00000
+  duplicate-blocks       context-ratio  edit          100%    1.5   6981       -    537       -        -
+                                        apply_patch    83%   11.7  39022  +32041   2350   +1814 +0.00000
+                                        hashline      100%    1.3   7597    +616    343    -194 +0.00000
+  repetitive-list        context-ratio  edit          100%    1.0   5740       -    385       -        -
+                                        apply_patch    17%   12.0  43699  +37960   2513   +2128 +0.00000
+                                        hashline      100%    1.2   8691   +2951    317     -68 +0.00000
+  repetitive-list-large  context-ratio  edit          100%    1.0  13082       -    373       -        -
+                                        apply_patch    67%   11.2  90238  +77156   2255   +1881 +0.00000
+                                        hashline       83%    1.7  28120  +15038    494    +120 +0.00000
+  many-field-edits       edit-density   edit          100%    1.0  14905       -   1907       -        -
+                                        apply_patch     0%    8.2  66078  +51172   3294   +1388 +0.00000
+                                        hashline      100%    1.2  20927   +6022   1595    -312 +0.00000
+  delete-function        format         edit          100%    1.2   6452       -    407       -        -
+                                        apply_patch    50%   15.0  51336  +44885   3403   +2997 +0.00000
+                                        hashline      100%    1.3  10065   +3614    699    +293 +0.00000
+  long-file              format         edit          100%    1.0   5434       -    348       -        -
+                                        apply_patch    67%   10.5  42184  +36750   2585   +2237 +0.00000
+                                        hashline      100%    1.0   7841   +2407    352      +4 +0.00000
+  rename-in-file         format         edit          100%    1.0   5941       -    418       -        -
+                                        apply_patch    50%   11.3  38046  +32105   2502   +2084 +0.00000
+                                        hashline      100%    1.2   9820   +3879    650    +231 +0.00000
+  scattered-edits        format         edit          100%    1.0   5371       -    430       -        -
+                                        apply_patch    67%   11.3  37450  +32079   2586   +2156 +0.00000
+                                        hashline       83%    1.2   7570   +2199    475     +45 +0.00000
+  single-edit            format         edit          100%    1.0   3983       -    239       -        -
+                                        apply_patch    67%   11.2  33325  +29343   2070   +1831 +0.00000
+                                        hashline      100%    1.0   6577   +2594    267     +29 +0.00000
+  multifile-rename       multifile      edit          100%    3.0   5812       -    665       -        -
+                                        apply_patch    83%   15.8  49271  +43459   2944   +2279 +0.00000
+                                        hashline      100%    3.0   7463   +1652    699     +34 +0.00000
+  multifile-rename-wide  multifile      edit          100%    6.0   5449       -   1006       -        -
+                                        apply_patch    33%   17.3  39173  +33725   3190   +2184 +0.00000
+                                        hashline      100%    7.7  10507   +5058   1257    +251 +0.00000
+
+openai-codex/gpt-5.5
+  task                   axis           lane          pass  calls     in     Δin    out    Δout   Δcost$
+  rewrite-body           block          edit          100%    1.0   3246       -    271       -        -
+                                        apply_patch   100%    1.0   2974    -272    288     +17 -0.00085
+                                        hashline      100%    1.0   5258   +2012    236     -35 +0.00095
+  duplicate-blocks       context-ratio  edit          100%    1.0   2763       -    131       -        -
+                                        apply_patch   100%    1.0   2453    -310    113     -19 -0.00211
+                                        hashline      100%    1.0   4839   +2076     83     -49 -0.00145
+  repetitive-list        context-ratio  edit          100%    1.0   3635       -    155       -        -
+                                        apply_patch   100%    1.0   3326    -309    132     -24 -0.00226
+                                        hashline      100%    1.0   5933   +2298     86     -70 +0.00325
+  repetitive-list-large  context-ratio  edit          100%    1.0  10302       -    199       -        -
+                                        apply_patch   100%    1.0   9979    -323    172     -26 -0.00317
+                                        hashline      100%    1.0  13793   +3492    115     -84 +0.00687
+  many-field-edits       edit-density   edit          100%    1.0  12510       -   1259       -        -
+                                        apply_patch   100%    1.0  12146    -364    823    -437 -0.01492
+                                        hashline      100%    1.0  19342   +6832    422    -837 -0.01859
+  delete-function        format         edit          100%    1.0   2782       -    107       -        -
+                                        apply_patch   100%    1.0   2529    -253    148     +41 -0.00005
+                                        hashline      100%    1.0   4959   +2177    131     +23 +0.00313
+  long-file              format         edit          100%    1.0   3439       -    122       -        -
+                                        apply_patch   100%    1.0   2892    -547    124      +2 -0.00039
+                                        hashline      100%    1.0   5743   +2304    110     -12 +0.00694
+  rename-in-file         format         edit          100%    1.0   2787       -    111       -        -
+                                        apply_patch   100%    1.0   2569    -218    191     +80 +0.00131
+                                        hashline      100%    1.0   4962   +2174    191     +80 +0.00635
+  scattered-edits        format         edit          100%    1.0   2971       -    134       -        -
+                                        apply_patch   100%    1.0   2687    -284    144     +10 -0.00112
+                                        hashline      100%    1.0   5164   +2193    130      -4 +0.00472
+  single-edit            format         edit          100%    1.0   2625       -     90       -        -
+                                        apply_patch   100%    1.0   2351    -274    102     +13 -0.00100
+                                        hashline      100%    1.0   4696   +2071     87      -3 +0.00489
+  multifile-rename       multifile      edit          100%    3.0   3784       -    419       -        -
+                                        apply_patch   100%    1.0   2928    -856    301    -119 -0.00707
+                                        hashline      100%    3.0   5498   +1714    309    -110 -0.00242
+  multifile-rename-wide  multifile      edit          100%    6.0   3787       -    450       -        -
+                                        apply_patch   100%    1.0   3489    -298    529     +80 +0.00243
+                                        hashline      100%    6.0   6358   +2571    647    +197 +0.01262
+
+opencode-go/deepseek-v4-flash
+  task                   axis           lane          pass  calls     in     Δin    out    Δout   Δcost$
+  rewrite-body           block          edit          100%    1.0   6580       -    498       -        -
+                                        apply_patch    50%   14.0 268406 +261826   6417   +5920 +0.00394
+                                        hashline      100%    1.0   9949   +3369    576     +78 +0.00015
+  duplicate-blocks       context-ratio  edit          100%    1.0   6035       -    479       -        -
+                                        apply_patch    83%    8.8  64219  +58183   2397   +1918 +0.00119
+                                        hashline      100%    1.0   7062   +1026    382     -96 +0.00007
+  repetitive-list        context-ratio  edit          100%    1.0   5688       -    403       -        -
+                                        apply_patch    33%    7.0 123427 +117739   2929   +2526 +0.00202
+                                        hashline      100%    1.0   8103   +2415    342     -61 +0.00012
+  repetitive-list-large  context-ratio  edit          100%    1.0  12164       -    448       -        -
+                                        apply_patch    50%   12.2 269126 +256962   5173   +4726 +0.00298
+                                        hashline      100%    1.0  15165   +3001    409     -39 +0.00023
+  many-field-edits       edit-density   edit          100%    1.0  21385       -   2589       -        -
+                                        apply_patch     0%   15.2 380131 +358746   8834   +6245 +0.00417
+                                        hashline      100%    1.0  42791  +21406   1469   -1121 +0.00013
+  delete-function        format         edit          100%    1.0   6558       -    628       -        -
+                                        apply_patch    83%   12.7 189436 +182879   4108   +3481 +0.00245
+                                        hashline      100%    1.0   8630   +2073    574     -54 +0.00010
+  long-file              format         edit          100%    1.0   6048       -    392       -        -
+                                        apply_patch    67%   13.5 147827 +141779   4939   +4546 +0.00240
+                                        hashline      100%    1.0   8059   +2012    378     -15 +0.00013
+  rename-in-file         format         edit          100%    1.0   6359       -    472       -        -
+                                        apply_patch    67%   14.5 156762 +150403   4200   +3729 +0.00219
+                                        hashline      100%    1.2  10878   +4519    867    +395 +0.00030
+  scattered-edits        format         edit          100%    1.0   5231       -    396       -        -
+                                        apply_patch    50%    8.5 103745  +98514   3398   +3001 +0.00161
+                                        hashline       67%    1.0   7375   +2143    474     +78 +0.00017
+  single-edit            format         edit          100%    1.0   4525       -    277       -        -
+                                        apply_patch   100%    8.2  28559  +24034   1733   +1456 +0.00058
+                                        hashline      100%    1.0   6804   +2278    263     -14 +0.00012
+  multifile-rename       multifile      edit          100%    3.2   6891       -    898       -        -
+                                        apply_patch    67%   13.3 209231 +202339   4608   +3709 +0.00263
+                                        hashline      100%    3.0   7938   +1047    890      -9 +0.00013
+  multifile-rename-wide  multifile      edit          100%    9.3   9716       -   1655       -        -
+                                        apply_patch    83%   25.3 177537 +167821   4883   +3228 +0.00223
+                                        hashline       83%    9.3  12806   +3089   1861    +206 +0.00020
