@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.3.0
+
+### Features
+
+- Run file picker suggestion ranking in a worker thread to improve performance for large number of files (cebda6d)
+- Scope file picker ranking to directory children and add literal fast path to improve performance for large number of files (b2d388d)
+- Add a literal fast path to improve `grep` performance for large number of files (a50fee3)
+- Add repo-aware file enumeration with accurate nested Git ignore handling (131483e)
+- List directories in the file picker and avoid adding a trailing space on tab completion (c47deff)
+
+### Bug Fixes
+
+- Respect excluded edit tools when using `apply_patch` (556f991)
+
+### Improvements
+
+- Bump dependencies (4920aaf)
+- Add edit micro benchmark and results (13541c1, 500f749)
+- Add README badges (0baf591)
+
 ## v0.2.0
 
 ### Features
