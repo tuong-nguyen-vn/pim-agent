@@ -56,6 +56,41 @@ test("empty relative query returns cached catalog in given order", async () => {
   expect(result?.map((item) => item.value)).toEqual(["a.ts", "b.ts"]);
 });
 
+test("relative path query ranks only direct children of the selected directory", async () => {
+  const cachedRelative: readonly FileCandidate[] = [
+    file("src/util"),
+    file("src/util/clock.ts"),
+    file("src/util/log.ts"),
+    file("src/feature/clock.ts"),
+    file("README.md"),
+  ];
+
+  const result = await rank("src/util/cl", { cachedRelative });
+
+  expect(result?.map((item) => item.value)).toEqual(["src/util/clock.ts"]);
+});
+
+test("relative path query with trailing slash lists directory children without global fuzzy ranking", async () => {
+  const directory = (path: string): FileCandidate => ({
+    ...file(path),
+    isDirectory: true,
+  });
+  const cachedRelative: readonly FileCandidate[] = [
+    directory("src"),
+    file("src/index.ts"),
+    directory("src/util"),
+    file("src/util/clock.ts"),
+    file("README.md"),
+  ];
+
+  const result = await rank("src/", { cachedRelative });
+
+  expect(result?.map((item) => item.value)).toEqual([
+    "src/index.ts",
+    "src/util/",
+  ]);
+});
+
 test("absolute query lists the resolved directory", async () => {
   await mkdir(join(workspace, "sub"), { recursive: true });
   await writeFile(join(workspace, "sub", "alpha.ts"), "a");
