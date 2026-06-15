@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { McpClient } from "./McpClient";
+import { RateLimiter } from "./RateLimiter";
 
 type MockFetch = (
   input: Parameters<typeof fetch>[0],
@@ -98,6 +99,213 @@ test("performs the initialize → initialized → tools/call round trip", async 
       arguments: { x: 1 },
     },
   });
+});
+
+test("handshakes once and reuses the session across calls", async () => {
+  const methods: string[] = [];
+  const fetcher: MockFetch = async (input, init) => {
+    const request = await captureRequest(input, init);
+    methods.push(String(request.body["method"]));
+
+    if (request.body["method"] === "initialize") {
+      return Response.json(
+        { jsonrpc: "2.0", id: 1, result: {} },
+        { headers: { "mcp-session-id": "session-reuse" } }
+      );
+    }
+
+    if (request.body["method"] === "notifications/initialized") {
+      return new Response(null, { status: 202 });
+    }
+
+    return Response.json({
+      jsonrpc: "2.0",
+      id: request.body["id"],
+      result: { ok: true },
+    });
+  };
+  const client = new McpClient({
+    endpoint: "https://mcp.test/mcp",
+    fetch: fetcher,
+  });
+
+  await client.callTool({ name: "demo_tool", arguments: {} });
+  await client.callTool({ name: "demo_tool", arguments: {} });
+
+  expect(methods).toEqual([
+    "initialize",
+    "notifications/initialized",
+    "tools/call",
+    "tools/call",
+  ]);
+});
+
+test("shares a single handshake across parallel cold calls", async () => {
+  let initializeCount = 0;
+  const fetcher: MockFetch = async (input, init) => {
+    const request = await captureRequest(input, init);
+
+    if (request.body["method"] === "initialize") {
+      initializeCount++;
+      return Response.json(
+        { jsonrpc: "2.0", id: 1, result: {} },
+        { headers: { "mcp-session-id": "session-parallel" } }
+      );
+    }
+
+    if (request.body["method"] === "notifications/initialized") {
+      return new Response(null, { status: 202 });
+    }
+
+    return Response.json({
+      jsonrpc: "2.0",
+      id: request.body["id"],
+      result: { ok: true },
+    });
+  };
+  const client = new McpClient({
+    endpoint: "https://mcp.test/mcp",
+    fetch: fetcher,
+  });
+
+  await Promise.all([
+    client.callTool({ name: "demo_tool", arguments: {} }),
+    client.callTool({ name: "demo_tool", arguments: {} }),
+    client.callTool({ name: "demo_tool", arguments: {} }),
+  ]);
+
+  expect(initializeCount).toBe(1);
+});
+
+test("re-handshakes after a failed handshake", async () => {
+  let initializeCount = 0;
+  const fetcher: MockFetch = async (input, init) => {
+    const request = await captureRequest(input, init);
+
+    if (request.body["method"] === "initialize") {
+      initializeCount++;
+
+      if (initializeCount === 1) {
+        return new Response("upstream hiccup", { status: 503 });
+      }
+
+      return Response.json(
+        { jsonrpc: "2.0", id: request.body["id"], result: {} },
+        { headers: { "mcp-session-id": "session-recovered" } }
+      );
+    }
+
+    if (request.body["method"] === "notifications/initialized") {
+      return new Response(null, { status: 202 });
+    }
+
+    return Response.json({
+      jsonrpc: "2.0",
+      id: request.body["id"],
+      result: { ok: true },
+    });
+  };
+  const client = new McpClient({
+    endpoint: "https://mcp.test/mcp",
+    fetch: fetcher,
+  });
+
+  await expect(
+    client.callTool({ name: "demo_tool", arguments: {} })
+  ).rejects.toThrow("MCP request failed with HTTP 503");
+
+  await expect(
+    client.callTool({ name: "demo_tool", arguments: {} })
+  ).resolves.toEqual({ ok: true });
+
+  expect(initializeCount).toBe(2);
+});
+
+test("re-handshakes once when the session expires mid-call", async () => {
+  let initializeCount = 0;
+  let toolCallCount = 0;
+  const fetcher: MockFetch = async (input, init) => {
+    const request = await captureRequest(input, init);
+
+    if (request.body["method"] === "initialize") {
+      initializeCount++;
+      return Response.json(
+        { jsonrpc: "2.0", id: request.body["id"], result: {} },
+        { headers: { "mcp-session-id": `session-${initializeCount}` } }
+      );
+    }
+
+    if (request.body["method"] === "notifications/initialized") {
+      return new Response(null, { status: 202 });
+    }
+
+    toolCallCount++;
+
+    if (toolCallCount === 1) {
+      return new Response("session expired", { status: 404 });
+    }
+
+    return Response.json({
+      jsonrpc: "2.0",
+      id: request.body["id"],
+      result: { ok: true },
+    });
+  };
+  const client = new McpClient({
+    endpoint: "https://mcp.test/mcp",
+    fetch: fetcher,
+  });
+
+  await expect(
+    client.callTool({ name: "demo_tool", arguments: {} })
+  ).resolves.toEqual({ ok: true });
+
+  expect(initializeCount).toBe(2);
+  expect(toolCallCount).toBe(2);
+});
+
+test("rate limits every request except cancellations", async () => {
+  const fetcher: MockFetch = async (input, init) => {
+    const request = await captureRequest(input, init);
+
+    if (request.body["method"] === "initialize") {
+      return Response.json(
+        { jsonrpc: "2.0", id: request.body["id"], result: {} },
+        { headers: { "mcp-session-id": "session-throttle" } }
+      );
+    }
+
+    if (request.body["method"] === "notifications/initialized") {
+      return new Response(null, { status: 202 });
+    }
+
+    return Response.json({
+      jsonrpc: "2.0",
+      id: request.body["id"],
+      result: { ok: true },
+    });
+  };
+  let now = 0;
+  const sleeps: number[] = [];
+  const client = new McpClient({
+    endpoint: "https://mcp.test/mcp",
+    fetch: fetcher,
+    rateLimiter: new RateLimiter({
+      maxRequests: 1,
+      windowMs: 1000,
+      now: () => now,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+        now += ms;
+      },
+    }),
+  });
+
+  // A single cold call sends initialize + initialized + tools/call. With a
+  // budget of one request per window, the 2nd and 3rd each wait — proving the
+  // handshake requests draw tokens, not just the tool call.
+  await client.callTool({ name: "demo_tool", arguments: {} });
+  expect(sleeps).toEqual([1000, 1000]);
 });
 
 test("parses SSE responses", async () => {

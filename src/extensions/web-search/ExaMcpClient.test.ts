@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { RateLimiter } from "../../shared/RateLimiter";
 import { ExaMcpClient } from "./ExaMcpClient";
 
 type MockFetch = (
@@ -36,6 +37,67 @@ const handshakeOr = (toolCallResponse: () => Response): MockFetch => {
     return toolCallResponse();
   };
 };
+
+const jsonToolResponse = (): Response =>
+  Response.json({
+    jsonrpc: "2.0",
+    id: 2,
+    result: {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            results: [
+              { title: "t", url: "https://example.test/t", snippet: "s" },
+            ],
+          }),
+        },
+      ],
+    },
+  });
+
+const recordingLimiter = (): { limiter: RateLimiter; sleeps: number[] } => {
+  let now = 0;
+  const sleeps: number[] = [];
+  const limiter = new RateLimiter({
+    maxRequests: 1,
+    windowMs: 1000,
+    now: () => now,
+    sleep: async (ms) => {
+      sleeps.push(ms);
+      now += ms;
+    },
+  });
+
+  return { limiter, sleeps };
+};
+
+test("throttles requests on the free tier (no api key)", async () => {
+  const { limiter, sleeps } = recordingLimiter();
+  const client = new ExaMcpClient({
+    rateLimiter: limiter,
+    fetch: handshakeOr(jsonToolResponse),
+  });
+
+  await client.search({ query: "pim", numResults: 1 });
+
+  // initialize + initialized + tools/call all draw from the one-per-window
+  // budget, so the 2nd and 3rd requests wait.
+  expect(sleeps).toEqual([1000, 1000]);
+});
+
+test("does not throttle when an api key is provided", async () => {
+  const { limiter, sleeps } = recordingLimiter();
+  const client = new ExaMcpClient({
+    apiKey: "exa-key",
+    rateLimiter: limiter,
+    fetch: handshakeOr(jsonToolResponse),
+  });
+
+  await client.search({ query: "pim", numResults: 1 });
+
+  expect(sleeps).toEqual([]);
+});
 
 test("parses Exa JSON results", async () => {
   const client = new ExaMcpClient({

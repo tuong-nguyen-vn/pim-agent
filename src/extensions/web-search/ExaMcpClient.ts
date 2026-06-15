@@ -1,9 +1,11 @@
 import { McpClient, type McpFetch } from "../../shared/McpClient";
+import { RateLimiter } from "../../shared/RateLimiter";
 
 type ExaMcpClientOptions = {
   readonly endpoint?: string;
   readonly apiKey?: string;
   readonly fetch?: McpFetch;
+  readonly rateLimiter?: RateLimiter;
 };
 
 type ExaSearchInput = {
@@ -28,15 +30,30 @@ class ExaSearchError extends Error {
 export class ExaMcpClient {
   private static readonly defaultEndpoint = "https://mcp.exa.ai/mcp";
   private static readonly toolName = "web_search_exa";
+  private static readonly maxRequestsPerWindow = 3;
+  private static readonly windowMs = 1000;
 
   private readonly client: McpClient;
 
   public constructor(options: ExaMcpClientOptions = {}) {
+    const apiKey =
+      options.apiKey === undefined || options.apiKey.length === 0
+        ? undefined
+        : options.apiKey;
+    // Throttle only on the free tier; an API key lifts the request rate limit.
+    const rateLimiter =
+      apiKey !== undefined
+        ? undefined
+        : (options.rateLimiter ??
+          new RateLimiter({
+            maxRequests: ExaMcpClient.maxRequestsPerWindow,
+            windowMs: ExaMcpClient.windowMs,
+          }));
+
     this.client = new McpClient({
       endpoint: options.endpoint ?? ExaMcpClient.defaultEndpoint,
-      ...(options.apiKey === undefined || options.apiKey.length === 0
-        ? {}
-        : { headers: { "x-api-key": options.apiKey } }),
+      ...(apiKey === undefined ? {} : { headers: { "x-api-key": apiKey } }),
+      ...(rateLimiter === undefined ? {} : { rateLimiter }),
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
   }

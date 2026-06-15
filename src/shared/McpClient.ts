@@ -1,4 +1,5 @@
 import ky, { HTTPError, type KyInstance } from "ky";
+import type { RateLimiter } from "./RateLimiter";
 
 export type McpFetch = (
   input: Parameters<typeof fetch>[0],
@@ -11,6 +12,7 @@ export type McpClientOptions = {
   readonly fetch?: McpFetch;
   readonly clientName?: string;
   readonly clientVersion?: string;
+  readonly rateLimiter?: RateLimiter;
 };
 
 export type CallToolInput = {
@@ -26,9 +28,12 @@ type JsonRpcResponse = {
 };
 
 export class McpClientError extends Error {
-  public constructor(message: string) {
+  public readonly status: number | undefined;
+
+  public constructor(message: string, status?: number) {
     super(message);
     this.name = "McpClientError";
+    this.status = status;
   }
 }
 
@@ -40,13 +45,16 @@ export class McpClient {
   private readonly clientName: string;
   private readonly clientVersion: string;
   private readonly ky: KyInstance;
+  private readonly rateLimiter: RateLimiter | undefined;
   private nextRequestId = 1;
+  private sessionPromise: Promise<string | undefined> | undefined;
 
   public constructor(options: McpClientOptions) {
     this.endpoint = options.endpoint;
     this.extraHeaders = options.headers ?? {};
     this.clientName = options.clientName ?? "pim-agent";
     this.clientVersion = options.clientVersion ?? "0.0.0";
+    this.rateLimiter = options.rateLimiter;
     this.ky = ky.create(
       options.fetch === undefined
         ? {}
@@ -55,35 +63,75 @@ export class McpClient {
   }
 
   public async callTool(input: CallToolInput): Promise<unknown> {
-    let sessionId: string | undefined;
-    let activeRequestId: number | undefined;
+    const pending = this.ensureSession();
+    const sessionId = await pending;
 
     try {
-      activeRequestId = this.nextRequestId++;
-      const initialize = await this.sendRpcRequest({
-        id: activeRequestId,
-        method: "initialize",
-        params: {
-          protocolVersion: McpClient.protocolVersion,
-          clientInfo: {
-            name: this.clientName,
-            version: this.clientVersion,
-          },
-          capabilities: {},
+      return await this.invokeTool(input, sessionId);
+    } catch (error) {
+      if (
+        input.signal?.aborted ||
+        sessionId === undefined ||
+        !isStaleSessionError(error)
+      ) {
+        throw error;
+      }
+
+      this.invalidateSession(pending);
+
+      return this.invokeTool(input, await this.ensureSession());
+    }
+  }
+
+  private ensureSession(): Promise<string | undefined> {
+    const pending = (this.sessionPromise ??= this.handshake().catch(
+      (error: unknown) => {
+        this.invalidateSession(pending);
+        throw error;
+      }
+    ));
+
+    return pending;
+  }
+
+  private invalidateSession(pending: Promise<string | undefined>): void {
+    if (this.sessionPromise === pending) {
+      this.sessionPromise = undefined;
+    }
+  }
+
+  private async handshake(): Promise<string | undefined> {
+    const initialize = await this.sendRpcRequest({
+      id: this.nextRequestId++,
+      method: "initialize",
+      params: {
+        protocolVersion: McpClient.protocolVersion,
+        clientInfo: {
+          name: this.clientName,
+          version: this.clientVersion,
         },
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-      });
-      sessionId = initialize.sessionId;
+        capabilities: {},
+      },
+    });
 
-      await this.sendNotification({
-        sessionId,
-        method: "notifications/initialized",
-        params: {},
-      });
+    await this.sendNotification({
+      sessionId: initialize.sessionId,
+      method: "notifications/initialized",
+      params: {},
+    });
 
-      activeRequestId = this.nextRequestId++;
+    return initialize.sessionId;
+  }
+
+  private async invokeTool(
+    input: CallToolInput,
+    sessionId: string | undefined
+  ): Promise<unknown> {
+    const requestId = this.nextRequestId++;
+
+    try {
       const toolCall = await this.sendRpcRequest({
-        id: activeRequestId,
+        id: requestId,
         ...(sessionId === undefined ? {} : { sessionId }),
         method: "tools/call",
         params: {
@@ -96,7 +144,7 @@ export class McpClient {
       return toolCall.envelope.result;
     } catch (error) {
       if (input.signal?.aborted) {
-        await this.sendCancellation(sessionId, activeRequestId);
+        await this.sendCancellation(sessionId, requestId);
         throw new McpClientError("MCP request aborted.");
       }
 
@@ -141,6 +189,7 @@ export class McpClient {
     readonly sessionId: string | undefined;
     readonly method: string;
     readonly params: Readonly<Record<string, unknown>>;
+    readonly rateLimited?: boolean;
   }): Promise<void> {
     await this.postJson(
       {
@@ -148,7 +197,9 @@ export class McpClient {
         method: input.method,
         params: input.params,
       },
-      input.sessionId
+      input.sessionId,
+      undefined,
+      input.rateLimited ?? true
     );
   }
 
@@ -168,6 +219,7 @@ export class McpClient {
           requestId,
           reason: "Tool call aborted.",
         },
+        rateLimited: false,
       });
     } catch {
       // abort already surfaces; cancel is best-effort
@@ -177,8 +229,13 @@ export class McpClient {
   private async postJson(
     body: Readonly<Record<string, unknown>>,
     sessionId?: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    rateLimited = true
   ): Promise<Response> {
+    if (rateLimited) {
+      await this.rateLimiter?.acquire();
+    }
+
     try {
       return await this.ky(this.endpoint, {
         method: "POST",
@@ -193,7 +250,8 @@ export class McpClient {
 
       if (error instanceof HTTPError) {
         throw new McpClientError(
-          `MCP request failed with HTTP ${error.response.status}: ${excerpt(stringifyErrorData(error.data))}`
+          `MCP request failed with HTTP ${error.response.status}: ${excerpt(stringifyErrorData(error.data))}`,
+          error.response.status
         );
       }
 
@@ -328,6 +386,10 @@ export class McpClient {
       "MCP SSE response did not include the expected message."
     );
   }
+}
+
+function isStaleSessionError(error: unknown): boolean {
+  return error instanceof McpClientError && error.status === 404;
 }
 
 function asRecord(
