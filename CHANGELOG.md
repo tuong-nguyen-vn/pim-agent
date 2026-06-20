@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.0
+
+### Features
+
+- Render Telegram replies and live status as Bot API 10.1 rich messages (b1afcb9)
+- Reuse Exa MCP sessions and throttle free-tier web searches (60eef60)
+
+### Improvements
+
+- Document Telegram rich text formatting (1953b3c)
+
 ## v0.3.0
 
 ### Features
