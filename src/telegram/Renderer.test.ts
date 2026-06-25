@@ -72,12 +72,19 @@ const session = {
   settings: { logsMode: "text" },
 } as unknown as Session;
 
-function makeRenderer(): {
+function makeRenderer(logsMode = "text"): {
   readonly api: FakeApi;
   readonly renderer: Renderer;
 } {
   const api = new FakeApi();
-  return { api, renderer: new Renderer(session, api as unknown as Api) };
+  const rendererSession = {
+    ...session,
+    settings: { logsMode },
+  } as unknown as Session;
+  return {
+    api,
+    renderer: new Renderer(rendererSession, api as unknown as Api),
+  };
 }
 
 function todoStart(
@@ -431,9 +438,9 @@ describe("Telegram Renderer todo status", () => {
     expect(api.edited.map((msg) => msg.text)).toEqual([
       [
         "📋 <b>Remember to buy milk</b>",
-        "First item is in progress. Now let me finish it and start the next one:",
+        "<p>First item is in progress. Now let me finish it and start the next one:</p>",
         "📋 <b>Remember to get water</b>",
-      ].join("<br><br>"),
+      ].join(""),
     ]);
   });
 
@@ -480,5 +487,109 @@ describe("Telegram Renderer todo status", () => {
       "📋 <b>Build feature</b>",
     ]);
     expect(api.edited).toEqual([]);
+  });
+});
+
+describe("Telegram Renderer status length", () => {
+  test("keeps long narration entries within the rich-message budget", async () => {
+    const { api, renderer } = makeRenderer();
+    const long = "x".repeat(1_200);
+
+    for (const event of assistantText(long)) {
+      renderer.handleEvent(event);
+    }
+    await renderer.finish("", "ok");
+
+    expect(api.sent.map((msg) => msg.text)).toEqual([`<p>${long}</p>`]);
+  });
+
+  test("renders narration status text as markdown", async () => {
+    const { api, renderer } = makeRenderer();
+
+    for (const event of assistantText("**bold** and `code`")) {
+      renderer.handleEvent(event);
+    }
+    await renderer.finish("", "ok");
+
+    expect(api.sent.map((msg) => msg.text)).toEqual([
+      "<p><b>bold</b> and <code>code</code></p>",
+    ]);
+  });
+
+  test("renders verbose thinking status text as markdown", async () => {
+    const { api, renderer } = makeRenderer("verbose");
+
+    renderer.handleEvent({
+      type: "message_update",
+      assistantMessageEvent: { type: "thinking_delta", delta: "- **plan**" },
+    } as AgentSessionEvent);
+    renderer.handleEvent({
+      type: "message_update",
+      assistantMessageEvent: { type: "thinking_end" },
+    } as AgentSessionEvent);
+    await renderer.finish("", "ok");
+
+    expect(api.sent.map((msg) => msg.text)).toEqual([
+      "<ul><li><i><b>plan</b></i></li></ul>",
+    ]);
+  });
+
+  test("uses no explicit break between thinking and narration blocks", async () => {
+    const { api, renderer } = makeRenderer("verbose");
+
+    renderer.handleEvent({
+      type: "message_update",
+      assistantMessageEvent: { type: "thinking_delta", delta: "plan" },
+    } as AgentSessionEvent);
+    renderer.handleEvent({
+      type: "message_update",
+      assistantMessageEvent: { type: "thinking_end" },
+    } as AgentSessionEvent);
+    for (const event of assistantText("answer")) {
+      renderer.handleEvent(event);
+    }
+    await renderer.finish("", "ok");
+
+    expect(api.sent.map((msg) => msg.text)).toEqual([
+      "<p><i>plan</i></p><p>answer</p>",
+    ]);
+  });
+
+  test("still caps a single overlong status update", async () => {
+    const { api, renderer } = makeRenderer();
+    const suffix = " final tail";
+
+    for (const event of assistantText(`start ${"x".repeat(40_000)}${suffix}`)) {
+      renderer.handleEvent(event);
+    }
+    await renderer.finish("", "ok");
+
+    expect(api.sent).toHaveLength(1);
+    expect(api.sent[0]!.text.length).toBeLessThanOrEqual(32_000);
+    expect(api.sent[0]!.text.startsWith("<p>start xxxxxx")).toBe(true);
+    expect(api.sent[0]!.text.endsWith(`xxx…</p>`)).toBe(true);
+    expect(api.sent[0]!.text.includes(suffix)).toBe(false);
+  });
+
+  test("caps long prose by dropping earlier html blocks", async () => {
+    const { api, renderer } = makeRenderer();
+    const paragraphs = Array.from(
+      { length: 4 },
+      (_, i) => `paragraph ${i} ${"x".repeat(9_500)}`
+    );
+
+    for (const event of assistantText(paragraphs.join("\n\n"))) {
+      renderer.handleEvent(event);
+    }
+    await renderer.finish("", "ok");
+
+    expect(api.sent).toHaveLength(1);
+    expect(api.sent[0]!.text.length).toBeLessThanOrEqual(32_000);
+    expect(api.sent[0]!.text.startsWith("<p>… 1 earlier entries</p>")).toBe(
+      true
+    );
+    expect(api.sent[0]!.text).not.toContain("paragraph 0");
+    expect(api.sent[0]!.text).toContain("<p>paragraph 1");
+    expect(api.sent[0]!.text).toContain("<p>paragraph 3");
   });
 });

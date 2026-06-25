@@ -56,6 +56,30 @@ const TOOL_EMOJI: Record<string, string> = {
 
 const MESSAGE_LIMIT = 32000;
 const BR = "<br>";
+const BLOCK_TAGS = new Set([
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "ol",
+  "p",
+  "pre",
+  "table",
+  "tg-math-block",
+  "ul",
+]);
+const VOID_BLOCK_TAGS = new Set(["br", "hr"]);
+
+type HtmlTag = {
+  readonly start: number;
+  readonly end: number;
+  readonly name: string;
+  readonly closing: boolean;
+  readonly selfClosing: boolean;
+};
 
 export class Renderer {
   private readonly api: Api;
@@ -433,9 +457,9 @@ export class Renderer {
       if (entry.kind === "todo") {
         pieces.push(`${entry.emoji} <b>${Markdown.escape(entry.label)}</b>`);
       } else if (entry.kind === "thinking") {
-        pieces.push(`<i>${Renderer.escapeInline(entry.label)}</i>`);
+        pieces.push(Markdown.toHtml(entry.label, { italics: true }));
       } else if (entry.kind === "narration") {
-        pieces.push(Renderer.escapeInline(entry.label));
+        pieces.push(Markdown.toHtml(entry.label));
       } else {
         const isLastEntry = i === visible.length - 1;
         let suffix = "";
@@ -448,10 +472,8 @@ export class Renderer {
         pieces.push(`${entry.emoji} ${entry.label}${stats}${suffix}`);
       }
       const next = visible[i + 1];
-      if (next) {
-        pieces.push(
-          entry.kind === "tool" && next.kind === "tool" ? "<br>" : "<br><br>"
-        );
+      if (next && entry.kind === "tool" && next.kind === "tool") {
+        pieces.push(BR);
       }
     }
 
@@ -837,7 +859,7 @@ export class Renderer {
   }
 
   private static cleanProse(text: string): string {
-    return Renderer.truncate(text.replace(/\n{3,}/g, "\n\n").trim(), 900);
+    return text.replace(/\n{3,}/g, "\n\n").trim();
   }
 
   private static truncate(text: string, limit = 180): string {
@@ -848,15 +870,216 @@ export class Renderer {
     if (text.length <= MESSAGE_LIMIT) {
       return text;
     }
-    const lines = text.split(BR);
+    const blocks = Renderer.splitStatusBlocks(text);
     let dropped = 0;
-    let total = text.length;
-    while (total > MESSAGE_LIMIT && lines.length > 1) {
-      const first = lines.shift()!;
-      total -= first.length + BR.length;
+    while (blocks.length > 1) {
+      blocks.shift();
       dropped += 1;
+      const rest = Renderer.trimLeadingBreaks(blocks.join("").trimStart());
+      const candidate = `<p>… ${dropped} earlier entries</p>${rest}`;
+      if (candidate.length <= MESSAGE_LIMIT) {
+        return candidate;
+      }
     }
-    return `… ${dropped} earlier entries${BR}${lines.join(BR)}`;
+    return Renderer.capPlainStatus(blocks);
+  }
+
+  private static splitStatusBlocks(html: string): string[] {
+    const blocks: string[] = [];
+    let cursor = 0;
+    while (cursor < html.length) {
+      const tag = Renderer.nextStatusBlockTag(html, cursor);
+      if (!tag) {
+        Renderer.pushStatusBlock(blocks, html.slice(cursor));
+        break;
+      }
+      if (VOID_BLOCK_TAGS.has(tag.name)) {
+        Renderer.pushStatusBlock(blocks, html.slice(cursor, tag.end));
+        cursor = tag.end;
+        continue;
+      }
+      Renderer.pushStatusBlock(blocks, html.slice(cursor, tag.start));
+      const end = Renderer.statusBlockEnd(html, tag);
+      Renderer.pushStatusBlock(blocks, html.slice(tag.start, end));
+      cursor = end;
+    }
+    return blocks;
+  }
+
+  private static nextStatusBlockTag(
+    html: string,
+    start: number
+  ): HtmlTag | undefined {
+    const tags = Renderer.htmlTags(html, start);
+    for (const tag of tags) {
+      if (tag.closing) {
+        continue;
+      }
+      if (BLOCK_TAGS.has(tag.name) || VOID_BLOCK_TAGS.has(tag.name)) {
+        return tag;
+      }
+    }
+    return undefined;
+  }
+
+  private static statusBlockEnd(html: string, opener: HtmlTag): number {
+    if (opener.selfClosing) {
+      return opener.end;
+    }
+    const stack = [opener.name];
+    const tags = Renderer.htmlTags(html, opener.end);
+    for (const tag of tags) {
+      if (VOID_BLOCK_TAGS.has(tag.name)) {
+        continue;
+      }
+      if (!BLOCK_TAGS.has(tag.name)) {
+        continue;
+      }
+      if (tag.closing) {
+        if (stack.at(-1) === tag.name) {
+          stack.pop();
+        }
+      } else if (!tag.selfClosing) {
+        stack.push(tag.name);
+      }
+      if (stack.length === 0) {
+        return tag.end;
+      }
+    }
+    return html.length;
+  }
+
+  private static *htmlTags(html: string, start: number): Generator<HtmlTag> {
+    const re = /<\s*(\/)?\s*([a-z][\w:-]*)(?:\s[^>]*)?\/?\s*>/gi;
+    re.lastIndex = start;
+    for (let match = re.exec(html); match; match = re.exec(html)) {
+      const raw = match[0]!;
+      yield {
+        start: match.index,
+        end: re.lastIndex,
+        name: match[2]!.toLowerCase(),
+        closing: match[1] !== undefined,
+        selfClosing: /\/\s*>$/.test(raw),
+      };
+    }
+  }
+
+  private static pushStatusBlock(blocks: string[], block: string): void {
+    if (block) {
+      blocks.push(block);
+    }
+  }
+
+  private static trimLeadingBreaks(text: string): string {
+    return text.replace(/^(?:<br\s*\/?>)+/i, "").trimStart();
+  }
+
+  private static capPlainStatus(blocks: readonly string[]): string {
+    let head = "";
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i]!;
+      const candidate = `${head}${block}`;
+      if (candidate.length <= MESSAGE_LIMIT) {
+        head = candidate;
+        continue;
+      }
+      const remaining = MESSAGE_LIMIT - head.length;
+      const truncated = Renderer.truncateHtmlHead(block, remaining);
+      if (truncated) {
+        head = `${head}${truncated}`;
+      }
+      break;
+    }
+    return head.trimEnd();
+  }
+
+  private static truncateHtmlHead(html: string, limit: number): string {
+    if (html.length <= limit) {
+      return html;
+    }
+    if (limit <= 0) {
+      return "";
+    }
+    const wrapper = Renderer.outerHtmlWrapper(html);
+    if (wrapper) {
+      const innerLimit = limit - wrapper.open.length - wrapper.close.length;
+      if (innerLimit > 0) {
+        const inner = Renderer.truncateHtmlHead(wrapper.inner, innerLimit);
+        if (inner) {
+          return `${wrapper.open}${inner}${wrapper.close}`;
+        }
+      }
+    }
+    return Renderer.escapePlainHead(Renderer.stripHtml(html), limit);
+  }
+
+  private static outerHtmlWrapper(html: string):
+    | {
+        readonly open: string;
+        readonly inner: string;
+        readonly close: string;
+      }
+    | undefined {
+    const opener = /^<\s*([a-z][\w:-]*)(?:\s[^>]*)?\/?\s*>/i.exec(html);
+    if (!opener) {
+      return undefined;
+    }
+    const open = opener[0]!;
+    if (/\/\s*>$/.test(open)) {
+      return undefined;
+    }
+    const name = opener[1]!.toLowerCase();
+    const close = Renderer.matchingHtmlCloseTag(html, name, open.length);
+    if (!close || close.end !== html.length) {
+      return undefined;
+    }
+    return {
+      open,
+      inner: html.slice(open.length, close.start),
+      close: html.slice(close.start, close.end),
+    };
+  }
+
+  private static matchingHtmlCloseTag(
+    html: string,
+    name: string,
+    start: number
+  ): HtmlTag | undefined {
+    let depth = 1;
+    const tags = Renderer.htmlTags(html, start);
+    for (const tag of tags) {
+      if (tag.name !== name) {
+        continue;
+      }
+      if (tag.closing) {
+        depth -= 1;
+        if (depth === 0) {
+          return tag;
+        }
+      } else if (!tag.selfClosing && !VOID_BLOCK_TAGS.has(tag.name)) {
+        depth += 1;
+      }
+    }
+    return undefined;
+  }
+
+  private static escapePlainHead(text: string, limit: number): string {
+    const marker = "…";
+    if (limit < marker.length) {
+      return "";
+    }
+    const budget = limit - marker.length;
+    const escaped: string[] = [];
+    let length = 0;
+    for (const char of text) {
+      const next = char === "\n" ? BR : Markdown.escape(char);
+      if (length + next.length > budget) {
+        break;
+      }
+      escaped.push(next);
+      length += next.length;
+    }
+    return `${escaped.join("").trimEnd()}${marker}`;
   }
 
   private static chunk(html: string): readonly string[] {

@@ -10,6 +10,10 @@ type Segment =
       readonly aligns: ReadonlyArray<Align | undefined>;
     };
 
+type RenderOptions = {
+  readonly italics?: boolean;
+};
+
 const SAFE_LINK = /^(https?:|tg:|mailto:)/i;
 
 // Bun's GFM strikethrough strikes on a lone `~`, but Telegram (and CommonMark)
@@ -18,13 +22,13 @@ const SAFE_LINK = /^(https?:|tg:|mailto:)/i;
 const STRIKETHROUGH = /(?<!~)~~(?!~)((?:[^~]|~(?!~))+?)~~(?!~)/g;
 
 export class Markdown {
-  public static toHtml(md: string): string {
+  public static toHtml(md: string, options: RenderOptions = {}): string {
     const segments = Markdown.split(md);
     let out = "";
     for (const seg of segments) {
       out +=
         seg.kind === "md"
-          ? Markdown.renderMd(seg.text)
+          ? Markdown.renderMd(seg.text, options)
           : Markdown.renderTable(seg.rows, seg.aligns);
     }
     return out.trim();
@@ -83,29 +87,63 @@ export class Markdown {
       }
       return `<ul>${c}</ul>`;
     },
-    listItem: (c: string, meta?: { checked?: boolean }): string => {
-      const body = c.replace(/\n+$/, "");
-      const checked = meta?.checked;
-      if (checked === true) {
-        return `<li><input type="checkbox" checked> ${body}</li>`;
-      }
-      if (checked === false) {
-        return `<li><input type="checkbox"> ${body}</li>`;
-      }
-      return `<li>${body}</li>`;
-    },
+    listItem: (c: string, meta?: { checked?: boolean }): string =>
+      Markdown.listItemHtml(c.replace(/\n+$/, ""), meta?.checked),
     hr: (): string => "<hr/>",
     br: (): string => "<br>",
     table: (c: string): string => c,
   };
 
-  private static renderMd(md: string): string {
+  private static readonly ITALIC_RENDERERS = {
+    ...Markdown.RENDERERS,
+    paragraph: (c: string): string => `<p>${Markdown.italic(c)}</p>`,
+    heading: (c: string, meta?: { level?: number }): string => {
+      const level = Math.min(6, Math.max(1, meta?.level ?? 1));
+      return `<h${level}>${Markdown.italic(c)}</h${level}>`;
+    },
+    listItem: (c: string, meta?: { checked?: boolean }): string =>
+      Markdown.listItemHtml(
+        Markdown.italicListItemBody(c.replace(/\n+$/, "")),
+        meta?.checked
+      ),
+  };
+
+  private static listItemHtml(body: string, checked?: boolean): string {
+    if (checked === true) {
+      return `<li><input type="checkbox" checked> ${body}</li>`;
+    }
+    if (checked === false) {
+      return `<li><input type="checkbox"> ${body}</li>`;
+    }
+    return `<li>${body}</li>`;
+  }
+
+  private static renderMd(md: string, options: RenderOptions = {}): string {
     if (!md.trim()) {
       return "";
     }
-    return Bun.markdown.render(md, Markdown.RENDERERS, {
+    return Bun.markdown.render(md, Markdown.renderers(options), {
       strikethrough: false,
     });
+  }
+
+  private static renderers(options: RenderOptions): typeof Markdown.RENDERERS {
+    return options.italics ? Markdown.ITALIC_RENDERERS : Markdown.RENDERERS;
+  }
+
+  private static italic(text: string): string {
+    return text ? `<i>${text}</i>` : "";
+  }
+
+  // A nested list is appended to its parent item's content, so italicize only
+  // the leading text; wrapping a child <ul>/<ol> in <i> would be invalid.
+  private static italicListItemBody(body: string): string {
+    const nestedListIndex = body.search(/<(?:ul|ol)\b/);
+    if (nestedListIndex < 0) {
+      return Markdown.italic(body);
+    }
+    const before = body.slice(0, nestedListIndex);
+    return `${Markdown.italic(before)}${body.slice(nestedListIndex)}`;
   }
 
   private static renderInline(md: string): string {
