@@ -12,6 +12,11 @@ type Segment =
 
 const SAFE_LINK = /^(https?:|tg:|mailto:)/i;
 
+// Bun's GFM strikethrough strikes on a lone `~`, but Telegram (and CommonMark)
+// only strike on `~~`. We disable the parser's strikethrough and re-apply
+// double-tilde runs in the text callback, where code spans/blocks never reach.
+const STRIKETHROUGH = /(?<!~)~~(?!~)((?:[^~]|~(?!~))+?)~~(?!~)/g;
+
 export class Markdown {
   public static toHtml(md: string): string {
     const segments = Markdown.split(md);
@@ -34,7 +39,8 @@ export class Markdown {
   }
 
   private static readonly RENDERERS = {
-    text: (c: string): string => Markdown.escape(c),
+    text: (c: string): string =>
+      Markdown.escape(c).replace(STRIKETHROUGH, "<s>$1</s>"),
     paragraph: (c: string): string => `<p>${c}</p>`,
     heading: (c: string, meta?: { level?: number }): string => {
       const level = Math.min(6, Math.max(1, meta?.level ?? 1));
@@ -42,7 +48,6 @@ export class Markdown {
     },
     strong: (c: string): string => `<b>${c}</b>`,
     emphasis: (c: string): string => `<i>${c}</i>`,
-    strikethrough: (c: string): string => `<s>${c}</s>`,
     codespan: (c: string): string => `<code>${c}</code>`,
     code: (c: string, meta?: { language?: string }): string => {
       const body = c.replace(/\n+$/, "");
@@ -98,7 +103,9 @@ export class Markdown {
     if (!md.trim()) {
       return "";
     }
-    return Bun.markdown.render(md, Markdown.RENDERERS);
+    return Bun.markdown.render(md, Markdown.RENDERERS, {
+      strikethrough: false,
+    });
   }
 
   private static renderInline(md: string): string {

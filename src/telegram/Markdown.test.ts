@@ -15,6 +15,53 @@ describe("toHtml", () => {
     );
   });
 
+  test("single tilde is literal text, not strikethrough", () => {
+    expect(Markdown.toHtml("~hi~")).toBe("<p>~hi~</p>");
+    expect(Markdown.toHtml("~hi there~")).toBe("<p>~hi there~</p>");
+    expect(Markdown.toHtml("cost ~ $5 ~ each")).toBe("<p>cost ~ $5 ~ each</p>");
+  });
+
+  test("double tilde still strikes", () => {
+    expect(Markdown.toHtml("~~struck~~")).toBe("<p><s>struck</s></p>");
+    expect(Markdown.toHtml("~~a~b~~")).toBe("<p><s>a~b</s></p>");
+  });
+
+  test("longer tilde runs are not partially struck", () => {
+    expect(Markdown.toHtml("a ~~~x~~~ b")).toBe("<p>a ~~~x~~~ b</p>");
+    expect(Markdown.toHtml("a ~~~~x~~~~ b")).toBe("<p>a ~~~~x~~~~ b</p>");
+  });
+
+  test("single tilde inside inline code stays literal", () => {
+    expect(Markdown.toHtml("`~/path` and `~x~`")).toBe(
+      "<p><code>~/path</code> and <code>~x~</code></p>"
+    );
+  });
+
+  test("tilde inside complex inline code span stays literal", () => {
+    expect(Markdown.toHtml("`` `~` ``")).toBe("<p><code>`~`</code></p>");
+  });
+
+  test("tilde inside fenced code block stays literal", () => {
+    expect(Markdown.toHtml("```\n~not struck~\n```")).toBe(
+      "<pre>~not struck~</pre>"
+    );
+  });
+
+  test("tilde inside indented code block stays literal", () => {
+    expect(Markdown.toHtml("    ~/path~ code")).toBe("<pre>~/path~ code</pre>");
+  });
+
+  test("backslash-escaped tildes render as literal text", () => {
+    expect(Markdown.toHtml("a \\~b\\~ c")).toBe("<p>a ~b~ c</p>");
+    expect(Markdown.toHtml("a \\~~b~~ c")).toBe("<p>a ~~b~~ c</p>");
+  });
+
+  // Known limitation: strikethrough that wraps other inline markup is rebuilt
+  // from text fragments, so the `~~` runs land in separate nodes and stay literal.
+  test("strikethrough spanning inline markup is not struck", () => {
+    expect(Markdown.toHtml("~~a **b** c~~")).toBe("<p>~~a <b>b</b> c~~</p>");
+  });
+
   test("headings become structural h-tags", () => {
     expect(Markdown.toHtml("# H1")).toBe("<h1>H1</h1>");
     expect(Markdown.toHtml("## H2")).toBe("<h2>H2</h2>");
@@ -47,12 +94,18 @@ describe("toHtml", () => {
     expect(Markdown.toHtml("[ok](https://example.com)")).toBe(
       '<p><a href="https://example.com">ok</a></p>'
     );
+    expect(Markdown.toHtml("[home](https://example.com/~user)")).toBe(
+      '<p><a href="https://example.com/~user">home</a></p>'
+    );
     expect(Markdown.toHtml("[bad](javascript:alert(1))")).toBe("<p>bad</p>");
   });
 
   test("images render as link to src", () => {
     expect(Markdown.toHtml("![alt](https://e.com/a.png)")).toBe(
       '<p><a href="https://e.com/a.png">alt</a></p>'
+    );
+    expect(Markdown.toHtml("![alt](https://e.com/~a.png)")).toBe(
+      '<p><a href="https://e.com/~a.png">alt</a></p>'
     );
   });
 
