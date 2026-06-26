@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.0
+
+### Features
+
+- Render Telegram status narration as Markdown with message length caps (cafa871)
+
+### Bug Fixes
+
+- Require double tildes for Telegram strikethrough formatting (#12)
+
 ## v0.4.0
 
 ### Features
