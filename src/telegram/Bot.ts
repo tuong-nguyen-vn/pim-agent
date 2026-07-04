@@ -131,8 +131,11 @@ export class Bot {
     if (entries.length === 0) {
       return;
     }
-    const version = await Supervisor.readVersion();
-    const text = `✅ Pim Agent updated to v${version}!`;
+    const [version, piVersion] = await Promise.all([
+      Supervisor.readVersion(),
+      Supervisor.readPiVersion(),
+    ]);
+    const text = `✅ Pim Agent updated to v${version} (pi v${piVersion})!`;
     await Promise.all(
       entries.map((e) =>
         this.grammy.api

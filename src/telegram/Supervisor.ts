@@ -7,6 +7,7 @@ import { Fs } from "../shared/Fs";
 const UNIT_NAME = "pim-telegram";
 const LAUNCHD_LABEL = "com.aaroncql.pim-telegram";
 const NPM_PACKAGE = "@aaroncql/pim-agent";
+const PI_PACKAGE = "@earendil-works/pi-coding-agent";
 const CONFIRM_FILE = "update-confirm.json";
 
 export type UpdateConfirmEntry = {
@@ -136,22 +137,21 @@ export class Supervisor {
 
   public static async update(): Promise<UpdateResult> {
     const mode = await Supervisor.detectMode();
-    const cmd =
+    // Pi first: a newer pim may require a newer pi peer.
+    const cmds =
       mode.kind === "dev"
-        ? ["bun", "install"]
-        : ["bun", "install", "-g", `${NPM_PACKAGE}@latest`];
-    const proc = Bun.spawn([...cmd], {
-      cwd: mode.kind === "dev" ? mode.packageRoot : undefined,
-      stdout: "inherit",
-      stderr: "pipe",
-    });
-    const stderr = await new Response(proc.stderr).text();
-    const code = await proc.exited;
-    if (code !== 0) {
-      return {
-        ok: false,
-        error: `${cmd.join(" ")} exit ${code}: ${stderr.trim() || "(no stderr)"}`,
-      };
+        ? [["bun", "install"]]
+        : [
+            ["bun", "install", "-g", `${PI_PACKAGE}@latest`],
+            ["bun", "install", "-g", `${NPM_PACKAGE}@latest`],
+          ];
+    const cwd = mode.kind === "dev" ? mode.packageRoot : undefined;
+    try {
+      for (const cmd of cmds) {
+        await Supervisor.runOrThrow(cmd, cwd);
+      }
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
     }
     return { ok: true };
   }
@@ -163,6 +163,20 @@ export class Supervisor {
   public static async readVersion(): Promise<string> {
     const mode = await Supervisor.detectMode();
     const pkg = await Bun.file(join(mode.packageRoot, "package.json")).json();
+    return Supervisor.versionOf(pkg);
+  }
+
+  public static async readPiVersion(): Promise<string> {
+    try {
+      const url = import.meta.resolve(`${PI_PACKAGE}/package.json`);
+      const pkg = await Bun.file(Bun.fileURLToPath(url)).json();
+      return Supervisor.versionOf(pkg);
+    } catch {
+      return "?";
+    }
+  }
+
+  private static versionOf(pkg: { readonly version?: unknown }): string {
     return typeof pkg?.version === "string" ? pkg.version : "?";
   }
 
@@ -344,8 +358,15 @@ export class Supervisor {
     return out.includes("Linger=yes");
   }
 
-  private static async runOrThrow(cmd: ReadonlyArray<string>): Promise<void> {
-    const proc = Bun.spawn([...cmd], { stdout: "inherit", stderr: "pipe" });
+  private static async runOrThrow(
+    cmd: ReadonlyArray<string>,
+    cwd?: string
+  ): Promise<void> {
+    const proc = Bun.spawn([...cmd], {
+      cwd,
+      stdout: "inherit",
+      stderr: "pipe",
+    });
     const stderr = await new Response(proc.stderr).text();
     const code = await proc.exited;
     if (code !== 0) {
