@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.0
+
+### Features
+
+- Update pi alongside pim in prod Telegram `/update` and report its version (1b7e3e4)
+
+### Improvements
+
+- Bump `pi-coding-agent` to 0.80.10 and migrate to the ModelRuntime API (54d7046)
+
 ## v0.5.0
 
 ### Features
