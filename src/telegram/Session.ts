@@ -3,10 +3,10 @@ import { getSupportedThinkingLevels as piGetSupportedThinkingLevels } from "@ear
 import type { Api as ModelApi, Model } from "@earendil-works/pi-ai";
 import {
   AgentSession,
-  AuthStorage,
   createAgentSession,
   DefaultResourceLoader,
   ModelRegistry,
+  ModelRuntime,
   SessionManager,
   SettingsManager,
   type CompactionResult,
@@ -60,7 +60,7 @@ export type SessionDeps = {
   readonly config: TelegramConfig;
   readonly api: Api;
   readonly agentDir: string;
-  readonly authStorage: AuthStorage;
+  readonly modelRuntime: ModelRuntime;
   readonly modelRegistry: ModelRegistry;
   readonly scheduler: TaskScheduler;
   readonly settingsManagerFor: (cwd: string) => SettingsManager;
@@ -420,8 +420,7 @@ export class Session {
     const { session: agent } = await createAgentSession({
       cwd,
       agentDir: this.deps.agentDir,
-      authStorage: this.deps.authStorage,
-      modelRegistry: this.deps.modelRegistry,
+      modelRuntime: this.deps.modelRuntime,
       settingsManager,
       resourceLoader: loader,
       sessionManager,

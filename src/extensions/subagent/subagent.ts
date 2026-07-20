@@ -6,7 +6,6 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import {
-  AuthStorage,
   createAgentSession,
   DefaultResourceLoader,
   getAgentDir,
@@ -99,9 +98,8 @@ export async function createSdkSubagentSession(
 
   const { session } = await createAgentSession({
     cwd: parentCtx.cwd,
+    agentDir: getAgentDir(),
     model: parentCtx.model,
-    modelRegistry: parentCtx.modelRegistry,
-    authStorage: AuthStorage.create(),
     sessionManager: SessionManager.inMemory(parentCtx.cwd),
     resourceLoader: loader,
     tools: activeToolNames ? [...childToolNames(activeToolNames)] : undefined,

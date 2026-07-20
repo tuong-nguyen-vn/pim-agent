@@ -1,7 +1,7 @@
 import {
-  AuthStorage,
   getAgentDir,
   ModelRegistry,
+  ModelRuntime,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import type { Api } from "grammy";
@@ -20,8 +20,8 @@ export class SessionRegistry {
   private readonly api: Api;
   private readonly scheduler: TaskScheduler;
   private readonly cache = new Map<string, Session>();
-  private readonly authStorage: AuthStorage;
-  private readonly modelRegistry: ModelRegistry;
+  private modelRuntime!: ModelRuntime;
+  private modelRegistry!: ModelRegistry;
   private readonly settingsManagers = new Map<string, SettingsManager>();
   private readonly agentDir: string;
   private settings: Map<string, SessionSettings> = new Map();
@@ -38,11 +38,6 @@ export class SessionRegistry {
     this.api = api;
     this.scheduler = scheduler;
     this.agentDir = getAgentDir();
-    this.authStorage = AuthStorage.create(join(this.agentDir, "auth.json"));
-    this.modelRegistry = ModelRegistry.create(
-      this.authStorage,
-      join(this.agentDir, "models.json")
-    );
   }
 
   public setBotUsername(username: string): void {
@@ -75,7 +70,7 @@ export class SessionRegistry {
       config: this.config,
       api: this.api,
       agentDir: this.agentDir,
-      authStorage: this.authStorage,
+      modelRuntime: this.modelRuntime,
       modelRegistry: this.modelRegistry,
       scheduler: this.scheduler,
       settingsManagerFor: (cwd) => this.settingsManagerFor(cwd),
@@ -97,6 +92,11 @@ export class SessionRegistry {
   }
 
   private async bootstrap(): Promise<void> {
+    this.modelRuntime = await ModelRuntime.create({
+      authPath: join(this.agentDir, "auth.json"),
+      modelsPath: join(this.agentDir, "models.json"),
+    });
+    this.modelRegistry = new ModelRegistry(this.modelRuntime);
     const loaded = await Fs.readJsonOrEmpty<Record<string, SessionSettings>>(
       join(this.config.configDir, "state.json"),
       {}
