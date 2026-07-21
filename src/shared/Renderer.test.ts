@@ -131,6 +131,23 @@ describe("Renderer.renderToolCallTitle", () => {
     expect(component.render(80)).toEqual([" ▪ Bash: pwd".padEnd(80, " ")]);
   });
 
+  test("can leave title lines unpadded", () => {
+    const component = Renderer.renderToolCallTitle({
+      label: "Read",
+      title: "src/file.ts",
+      theme: stubTheme,
+      context: {
+        lastComponent: undefined,
+        isPartial: false,
+        isError: false,
+      },
+      separator: " ",
+      pad: false,
+    });
+
+    expect(component.render(80)).toEqual([" ▪ Read src/file.ts"]);
+  });
+
   test("labelColor overrides the default label color when provided", () => {
     const overridden = tracingTheme();
     Renderer.renderToolCallTitle({

@@ -6,6 +6,7 @@ import { editFile, formatEditSummary } from "./edit";
 import { type EditInput, editSchema } from "./schema";
 
 const ERROR_PREVIEW_LINES = 12;
+const DIFF_PREVIEW_LINES = 20;
 
 export default function (pi: ExtensionAPI): void {
   Tools.register(pi, {
@@ -49,6 +50,7 @@ export default function (pi: ExtensionAPI): void {
         theme,
         context: context as typeof context & { state: DiffRenderState },
         previewLines: ERROR_PREVIEW_LINES,
+        diffPreviewLines: DIFF_PREVIEW_LINES,
       });
     },
   });

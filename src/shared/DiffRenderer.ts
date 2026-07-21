@@ -26,17 +26,19 @@ type DiffBackgrounds = {
 
 export class DiffRenderer {
   private static readonly TAB = "   ";
+  // A single flat tone per line (no brighter intra-line emphasis band)
+  // matches Amp's evenly-colored added/removed rows.
   private static readonly DARK_BG: DiffBackgrounds = {
     added: "\x1b[48;2;13;40;24m",
     removed: "\x1b[48;2;58;20;20m",
-    addedEmph: "\x1b[48;2;26;81;47m",
-    removedEmph: "\x1b[48;2;100;35;35m",
+    addedEmph: "\x1b[48;2;13;40;24m",
+    removedEmph: "\x1b[48;2;58;20;20m",
   };
   private static readonly LIGHT_BG: DiffBackgrounds = {
     added: "\x1b[48;2;218;251;225m",
     removed: "\x1b[48;2;255;235;233m",
-    addedEmph: "\x1b[48;2;172;238;187m",
-    removedEmph: "\x1b[48;2;255;195;188m",
+    addedEmph: "\x1b[48;2;218;251;225m",
+    removedEmph: "\x1b[48;2;255;235;233m",
   };
   private static readonly CLEAR_TO_EOL = "\x1b[K";
   private static readonly BG_RESET = "\x1b[49m";
@@ -196,16 +198,31 @@ export class DiffRenderer {
     numberWidth: number,
     backgrounds: DiffBackgrounds
   ): string {
-    const prefix = DiffRenderer.formatPrefix(line, theme, numberWidth);
+    const lineNumber = DiffRenderer.formatLineNumber(
+      DiffRenderer.relevantLineNumber(line),
+      numberWidth
+    );
+    const gutter = theme.fg("toolDiffContext", `   ${lineNumber} `);
+    const sign = theme.fg(
+      line.kind === "added"
+        ? "toolDiffAdded"
+        : line.kind === "removed"
+          ? "toolDiffRemoved"
+          : "toolDiffContext",
+      DiffRenderer.signFor(line.kind)
+    );
     const emphasized = DiffRenderer.applyLineEmphasis(
       line,
       content,
       backgrounds
     );
-    return DiffRenderer.applyBackground(
-      line.kind,
-      ` ${prefix}${emphasized}`,
-      backgrounds
+    return (
+      gutter +
+      DiffRenderer.applyBackground(
+        line.kind,
+        `${sign} ${emphasized}`,
+        backgrounds
+      )
     );
   }
 
@@ -328,29 +345,6 @@ export class DiffRenderer {
     return text;
   }
 
-  private static formatPrefix(
-    line: ToolDiffLine,
-    theme: Theme,
-    numberWidth: number
-  ): string {
-    const numLabel = DiffRenderer.formatLineNumber(
-      DiffRenderer.relevantLineNumber(line),
-      numberWidth
-    );
-    const sign = DiffRenderer.signFor(line.kind);
-    const gutter = `${numLabel} ${sign} `;
-
-    if (line.kind === "added") {
-      return theme.fg("toolDiffAdded", gutter);
-    }
-
-    if (line.kind === "removed") {
-      return theme.fg("toolDiffRemoved", gutter);
-    }
-
-    return theme.fg("toolDiffContext", gutter);
-  }
-
   private static relevantLineNumber(line: ToolDiffLine): number | undefined {
     if (line.kind === "added") {
       return line.newLine;
@@ -391,6 +385,6 @@ export class DiffRenderer {
     numberWidth: number
   ): string {
     const filler = " ".repeat(numberWidth);
-    return theme.fg("toolDiffContext", ` ${filler}   ⋯`);
+    return theme.fg("toolDiffContext", `   ${filler}   ⋯`);
   }
 }

@@ -1,6 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantMessage, Usage } from "@earendil-works/pi-ai";
+import type { AgentConfig } from "./agents";
 import {
   applyOutputCap,
   childToolNames,
@@ -311,5 +315,94 @@ describe("runSubagent", () => {
     await expect(
       runSubagent("outer", ctx, undefined, undefined, async () => outer)
     ).rejects.toThrow("subagents cannot call subagent tool");
+  });
+});
+
+describe("runSubagent with a named agent", () => {
+  const originalAgentDir = process.env["PI_CODING_AGENT_DIR"];
+  let root: string;
+  let projectCtx: ExtensionContext;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "pim-subagent-run-"));
+    process.env["PI_CODING_AGENT_DIR"] = join(root, "empty-user-agent-dir");
+    const agentsDir = join(root, ".pi", "agents");
+    await mkdir(agentsDir, { recursive: true });
+    await writeFile(
+      join(agentsDir, "reviewer.md"),
+      [
+        "---",
+        "name: reviewer",
+        "description: Reviews code",
+        "tools: read, grep",
+        "---",
+        "You are a meticulous code reviewer.",
+      ].join("\n"),
+      "utf-8"
+    );
+    projectCtx = { cwd: root } as ExtensionContext;
+  });
+
+  afterEach(async () => {
+    if (originalAgentDir === undefined) {
+      delete process.env["PI_CODING_AGENT_DIR"];
+    } else {
+      process.env["PI_CODING_AGENT_DIR"] = originalAgentDir;
+    }
+    await rm(root, { recursive: true, force: true });
+  });
+
+  test("prepends the agent's system prompt and restricts tools passed to the session", async () => {
+    let receivedAgent: AgentConfig | undefined;
+    let receivedPrompt: string | undefined;
+    const fake = new FakeSession(async (session, prompt) => {
+      receivedPrompt = prompt;
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({ type: "message_end", message: assistant(["done"]) });
+    });
+
+    const result = await runSubagent(
+      "find bugs",
+      projectCtx,
+      undefined,
+      undefined,
+      async (_parentCtx, _activeToolNames, agent) => {
+        receivedAgent = agent;
+        return fake;
+      },
+      ["read", "bash", "subagent"],
+      "reviewer"
+    );
+
+    expect(receivedAgent).toEqual({
+      name: "reviewer",
+      description: "Reviews code",
+      tools: ["read", "grep"],
+      systemPrompt: "You are a meticulous code reviewer.",
+      source: "project",
+    });
+    expect(receivedPrompt).toBe(
+      "You are a meticulous code reviewer.\n\n---\n\nTask: find bugs"
+    );
+    expect(result.content).toEqual([{ type: "text", text: "done" }]);
+  });
+
+  test("throws with the list of available agents for an unknown name", async () => {
+    const fake = new FakeSession(async () => {});
+
+    await expect(
+      runSubagent(
+        "task",
+        projectCtx,
+        undefined,
+        undefined,
+        async () => fake,
+        undefined,
+        "nonexistent"
+      )
+    ).rejects.toThrow(
+      'Unknown subagent "nonexistent". Available: reviewer (project).'
+    );
+    expect(fake.promptCalls).toBe(0);
   });
 });

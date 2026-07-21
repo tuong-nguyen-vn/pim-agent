@@ -16,6 +16,7 @@ import type {
   TextContent,
   Usage,
 } from "@earendil-works/pi-ai";
+import { type AgentConfig, discoverAgents } from "./agents";
 import { formatTopLine } from "./render";
 
 export const PER_TASK_OUTPUT_CAP = 32 * 1024;
@@ -77,7 +78,8 @@ export type SubagentSession = {
 
 export type CreateSubagentSession = (
   parentCtx: ExtensionContext,
-  activeToolNames: readonly string[] | undefined
+  activeToolNames: readonly string[] | undefined,
+  agent: AgentConfig | undefined
 ) => Promise<SubagentSession>;
 
 export function childToolNames(
@@ -88,7 +90,8 @@ export function childToolNames(
 
 export async function createSdkSubagentSession(
   parentCtx: ExtensionContext,
-  activeToolNames: readonly string[] | undefined
+  activeToolNames: readonly string[] | undefined,
+  agent: AgentConfig | undefined
 ): Promise<SubagentSession> {
   const loader = new DefaultResourceLoader({
     cwd: parentCtx.cwd,
@@ -96,16 +99,39 @@ export async function createSdkSubagentSession(
   });
   await loader.reload();
 
+  const baseTools = agent?.tools ?? activeToolNames;
+
   const { session } = await createAgentSession({
     cwd: parentCtx.cwd,
     agentDir: getAgentDir(),
     model: parentCtx.model,
     sessionManager: SessionManager.inMemory(parentCtx.cwd),
     resourceLoader: loader,
-    tools: activeToolNames ? [...childToolNames(activeToolNames)] : undefined,
+    tools: baseTools ? [...childToolNames(baseTools)] : undefined,
   });
 
   return session;
+}
+
+function resolveAgent(
+  agentName: string,
+  agents: readonly AgentConfig[]
+): AgentConfig {
+  const agent = agents.find((a) => a.name === agentName);
+  if (agent) {
+    return agent;
+  }
+  const available =
+    agents.map((a) => `${a.name} (${a.source})`).join(", ") ||
+    "none configured";
+  throw new Error(`Unknown subagent "${agentName}". Available: ${available}.`);
+}
+
+function promptFor(prompt: string, agent: AgentConfig | undefined): string {
+  if (!agent?.systemPrompt.trim()) {
+    return prompt;
+  }
+  return `${agent.systemPrompt.trim()}\n\n---\n\nTask: ${prompt}`;
 }
 
 export async function runSubagent(
@@ -114,7 +140,8 @@ export async function runSubagent(
   signal?: AbortSignal,
   onUpdate?: AgentToolUpdateCallback<SubagentDetails>,
   createSession: CreateSubagentSession = createSdkSubagentSession,
-  activeToolNames?: readonly string[]
+  activeToolNames?: readonly string[],
+  agentName?: string
 ): Promise<AgentToolResult<SubagentDetails>> {
   // Hard block against subagent recursion
   if (inSubagent.getStore()) {
@@ -122,6 +149,10 @@ export async function runSubagent(
   }
 
   return inSubagent.run(true, async () => {
+    const agent = agentName
+      ? resolveAgent(agentName, await discoverAgents(parentCtx.cwd))
+      : undefined;
+
     const capture = new SubagentEventCapture(onUpdate, {
       contextWindow: parentCtx.model?.contextWindow,
       model: parentCtx.model?.id,
@@ -145,14 +176,14 @@ export async function runSubagent(
     };
 
     try {
-      session = await createSession(parentCtx, activeToolNames);
+      session = await createSession(parentCtx, activeToolNames, agent);
       session.subscribe((event) => capture.handle(event));
       signal?.addEventListener("abort", onAbort, { once: true });
       if (signal?.aborted) {
         abortRequested = true;
         throw new Error("subagent aborted before start");
       }
-      await session.prompt(prompt);
+      await session.prompt(promptFor(prompt, agent));
       if (abortRequested && capture.snapshot().stopReason !== "aborted") {
         capture.markAborted();
       }

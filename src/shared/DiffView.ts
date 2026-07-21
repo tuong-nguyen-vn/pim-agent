@@ -62,6 +62,9 @@ export class DiffView {
     readonly theme: Theme;
     readonly markerColor: MarkerStatus;
     readonly lastComponent: Component | undefined;
+    readonly separator?: string;
+    readonly markerGlyph?: string;
+    readonly padTitle?: boolean;
   }): Component {
     const { label, path, stats, theme, markerColor, lastComponent } = args;
     const statsText = DiffView.formatStats(stats, theme);
@@ -75,6 +78,9 @@ export class DiffView {
         isPartial: markerColor === "warning",
         isError: markerColor === "error",
       },
+      separator: args.separator,
+      markerGlyph: args.markerGlyph,
+      pad: args.padTitle,
     });
   }
 
@@ -82,8 +88,10 @@ export class DiffView {
     readonly diff: ToolDiff;
     readonly theme: Theme;
     readonly lastComponent: Component | undefined;
+    readonly expanded: boolean;
+    readonly previewLines: number;
   }): Container {
-    const { diff, theme, lastComponent } = args;
+    const { diff, theme, lastComponent, expanded, previewLines } = args;
     const container =
       (lastComponent as Container | undefined) ?? new Container();
     container.clear();
@@ -96,14 +104,36 @@ export class DiffView {
 
     container.addChild(
       Renderer.makePrefixedBlock({
-        text: body,
+        text: DiffView.previewOrFull(body, expanded, previewLines, theme),
         theme,
-        prefix: Renderer.TIGHT_PREFIX,
+        prefix: { prefix: "", width: 0 },
       })
     );
 
     container.invalidate();
     return container;
+  }
+
+  // Amp-style collapsed diff: keep only the last `previewLines` rendered
+  // lines (tail-anchored, since edits/additions are usually most relevant
+  // near the end of a large write) and mark omitted lines with the same
+  // "⋯" separator used between hunks.
+  private static previewOrFull(
+    body: string,
+    expanded: boolean,
+    previewLines: number,
+    theme: Theme
+  ): string {
+    if (expanded) {
+      return body;
+    }
+
+    const lines = body.split("\n");
+    if (lines.length <= previewLines) {
+      return body;
+    }
+
+    return [theme.fg("muted", " ⋯"), ...lines.slice(-previewLines)].join("\n");
   }
 
   public static renderDiffCall(args: {
@@ -117,22 +147,39 @@ export class DiffView {
       readonly isError: boolean;
       readonly lastComponent: Component | undefined;
     };
+    readonly separator?: string;
+    readonly markerGlyph?: (markerColor: MarkerStatus) => string;
+    readonly link?: boolean;
+    readonly clickableLink?: boolean;
+    readonly padTitle?: boolean;
   }): Component {
     const { label, rawPath, theme, context } = args;
     const state = context.state;
     const display = Paths.titleOr(rawPath, context.cwd);
-    state.path = display;
+    const styledPath =
+      args.link && rawPath
+        ? Renderer.renderFileLink(
+            theme,
+            display,
+            Paths.resolve(rawPath, context.cwd),
+            args.clickableLink
+          )
+        : display;
+    state.path = styledPath;
     const markerColor = Renderer.markerColorFor(
       Boolean(context.isPartial),
       Boolean(context.isError)
     );
     const text = DiffView.buildTitle({
       label,
-      path: display,
+      path: styledPath,
       stats: { added: 0, removed: 0 },
       theme,
       markerColor,
       lastComponent: context.lastComponent,
+      separator: args.separator,
+      markerGlyph: args.markerGlyph?.(markerColor),
+      padTitle: args.padTitle,
     });
     state.titleComponent = text;
     return text;
@@ -149,8 +196,21 @@ export class DiffView {
       readonly lastComponent: Component | undefined;
     };
     readonly previewLines: number;
+    readonly diffPreviewLines: number;
+    readonly separator?: string;
+    readonly markerGlyph?: (markerColor: MarkerStatus) => string;
   }): Component {
-    const { label, result, options, theme, context, previewLines } = args;
+    const {
+      label,
+      result,
+      options,
+      theme,
+      context,
+      previewLines,
+      diffPreviewLines,
+      separator,
+      markerGlyph,
+    } = args;
     const state = context.state;
     const fallback =
       (context.lastComponent as Container | undefined) ?? new Container();
@@ -161,6 +221,19 @@ export class DiffView {
     }
 
     if (context.isError) {
+      if (state.titleComponent && state.path !== undefined) {
+        const markerColor = Renderer.markerColorFor(false, true);
+        DiffView.buildTitle({
+          label,
+          path: state.path,
+          stats: { added: 0, removed: 0 },
+          theme,
+          markerColor,
+          lastComponent: state.titleComponent,
+          separator,
+          markerGlyph: markerGlyph?.(markerColor),
+        });
+      }
       return Renderer.renderBorderedResult({
         result,
         options,
@@ -175,13 +248,16 @@ export class DiffView {
     const stats = DiffView.countStats(diff);
 
     if (state.titleComponent && state.path !== undefined) {
+      const markerColor = Renderer.markerColorFor(false, false);
       DiffView.buildTitle({
         label,
         path: state.path,
         stats,
         theme,
-        markerColor: Renderer.markerColorFor(false, false),
+        markerColor,
         lastComponent: state.titleComponent,
+        separator,
+        markerGlyph: markerGlyph?.(markerColor),
       });
     }
 
@@ -194,6 +270,8 @@ export class DiffView {
       diff,
       theme,
       lastComponent: context.lastComponent,
+      expanded: options.expanded,
+      previewLines: diffPreviewLines,
     });
   }
 }

@@ -16,6 +16,7 @@ import { type RenderContext, Renderer } from "../../shared/Renderer";
 import type { ApplyEntry } from "./executor";
 
 const ERROR_PREVIEW_LINES = 12;
+const DIFF_PREVIEW_LINES = 20;
 // Rename separator. ➝ (U+279D) reads more vertically centered than → in most
 // terminal fonts; swap here if a font renders it double-width.
 const ARROW = "➝";
@@ -251,6 +252,8 @@ export function renderApplyPatchResult(
           diff: view.body,
           theme,
           lastComponent: undefined,
+          expanded: options.expanded,
+          previewLines: DIFF_PREVIEW_LINES,
         })
       );
     }

@@ -79,6 +79,14 @@ export default function (pi: ExtensionAPI): void {
         title,
         theme,
         context,
+        markerGlyph: Renderer.markerGlyphFor(
+          Renderer.markerColorFor(
+            Boolean(context.isPartial),
+            Boolean(context.isError)
+          )
+        ),
+        separator: " ",
+        pad: false,
       });
     },
     renderResult(result, options, theme, context) {
@@ -89,11 +97,13 @@ export default function (pi: ExtensionAPI): void {
 
         if (
           typeof details?.visibleStart === "number" &&
-          typeof details.visibleEnd === "number"
+          typeof details.visibleEnd === "number" &&
+          typeof details.totalLines === "number"
         ) {
           state.outcome = {
             visibleStart: details.visibleStart,
             visibleEnd: details.visibleEnd,
+            totalLines: details.totalLines,
           };
           context.invalidate();
         }

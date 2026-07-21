@@ -7,6 +7,8 @@ import type {
 import {
   type Component,
   Container,
+  getCapabilities,
+  hyperlink,
   visibleWidth,
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
@@ -35,10 +37,12 @@ export type PrefixSpec = {
 class ToolTitle implements Component {
   private text = "";
   private theme: Theme | undefined;
+  private pad = true;
 
-  public setText(text: string, theme: Theme): void {
+  public setText(text: string, theme: Theme, pad: boolean | undefined): void {
     this.text = text;
     this.theme = theme;
+    this.pad = pad ?? this.pad;
   }
 
   public render(width: number): string[] {
@@ -51,16 +55,16 @@ class ToolTitle implements Component {
     const lines = wrapTextWithAnsi(normalized, Math.max(1, width));
 
     if (lines.length <= 1 || theme === undefined) {
-      return lines.map((line) => ToolTitle.padLine(line, width));
+      return lines.map((line) => this.padLine(line, width));
     }
 
     const inner = Math.max(1, width - Renderer.GAPPED_PREFIX.width);
-    const out = [ToolTitle.padLine(lines[0] ?? "", width)];
+    const out = [this.padLine(lines[0] ?? "", width)];
 
     for (const logical of lines.slice(1)) {
       for (const wrapped of wrapTextWithAnsi(logical, inner)) {
         out.push(
-          ToolTitle.padLine(
+          this.padLine(
             theme.fg("toolOutput", Renderer.GAPPED_PREFIX.prefix) + wrapped,
             width
           )
@@ -73,7 +77,10 @@ class ToolTitle implements Component {
 
   public invalidate(): void {}
 
-  private static padLine(line: string, width: number): string {
+  private padLine(line: string, width: number): string {
+    if (!this.pad) {
+      return line;
+    }
     return line + " ".repeat(Math.max(0, width - visibleWidth(line)));
   }
 }
@@ -99,6 +106,51 @@ export class Renderer {
       return "error";
     }
     return "success";
+  }
+
+  public static markerGlyphFor(status: MarkerStatus): string {
+    if (status === "success") {
+      return "✓";
+    }
+    if (status === "error") {
+      return "✗";
+    }
+    return "▪";
+  }
+
+  // Fixed truecolor match for Amp's file-link color (sampled: rgb(149,189,183)),
+  // used regardless of the active pim theme so links look the same as Amp's.
+  private static readonly FILE_LINK_FG = "\x1b[38;2;149;189;183m";
+  private static readonly FG_RESET = "\x1b[39m";
+  // Some terminals bleed the OSC 8 hover-underline decoration into trailing
+  // plain text/padding after the link closes — a `\x1b[39m` fg-only reset
+  // isn't enough to stop it, but a full SGR reset is. Only needed when we
+  // actually emitted a hyperlink.
+  private static readonly HARD_RESET = "\x1b[0m";
+  private static readonly AUTO_LINK_BOUNDARY = "\u200b";
+
+  /**
+   * Style a file path as a link and wrap it in an OSC 8 hyperlink (to a
+   * `file://` URI) when the terminal supports it, so it can be clicked to
+   * open in the OS/editor's default handler for the scheme. Leave
+   * underlining to the terminal's own hyperlink hover decoration — applying
+   * our own SGR underline alongside OSC 8 makes some terminals extend the
+   * hover underline to the end of the line.
+   */
+  public static renderFileLink(
+    _theme: Theme,
+    displayPath: string,
+    absolutePath: string,
+    clickable = true
+  ): string {
+    const styled = `${Renderer.FILE_LINK_FG}${displayPath}${Renderer.FG_RESET}`;
+    if (!clickable) {
+      return styled + Renderer.AUTO_LINK_BOUNDARY;
+    }
+    if (!getCapabilities().hyperlinks) {
+      return styled;
+    }
+    return hyperlink(styled, `file://${absolutePath}`) + Renderer.HARD_RESET;
   }
 
   public static extractErrorText(
@@ -139,22 +191,28 @@ export class Renderer {
     readonly theme: Theme;
     readonly context: RenderContext;
     readonly labelColor?: ThemeColor;
+    readonly markerGlyph?: string;
+    readonly separator?: string;
+    readonly pad?: boolean;
   }): Component {
     const { label, title, theme, context, labelColor } = args;
     const markerColor = Renderer.markerColorFor(
       Boolean(context.isPartial),
       Boolean(context.isError)
     );
+    const glyph = args.markerGlyph ?? "▪";
+    const separator = args.separator ?? ": ";
     const component =
       context.lastComponent instanceof ToolTitle
         ? context.lastComponent
         : new ToolTitle();
     component.setText(
-      theme.fg(markerColor, " ▪") +
+      theme.fg(markerColor, ` ${glyph}`) +
         " " +
         theme.fg(labelColor ?? "toolTitle", theme.bold(label)) +
-        theme.fg("toolTitle", ": " + title),
-      theme
+        theme.fg("toolTitle", separator + title),
+      theme,
+      args.pad
     );
     return component;
   }

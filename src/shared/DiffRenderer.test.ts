@@ -124,7 +124,7 @@ describe("DiffRenderer.render", () => {
     expect(out).toContain("gamma");
   });
 
-  test("emits emphasis bg for paired changed lines", () => {
+  test("keeps a single flat background tone for paired changed lines (no brighter emphasis band)", () => {
     const diff = DiffLines.buildToolDiff(
       "foo.ts",
       { lines: ["const x = 1;"], hasTrailingNewline: true },
@@ -138,8 +138,27 @@ describe("DiffRenderer.render", () => {
 
     const out = DiffRenderer.render({ toolDiff: diff, theme: stubTheme });
 
-    expect(out).toContain("\x1b[48;2;26;81;47m");
-    expect(out).toContain("\x1b[48;2;100;35;35m");
+    expect(out).toContain("\x1b[48;2;13;40;24m");
+    expect(out).toContain("\x1b[48;2;58;20;20m");
+    expect(out).not.toContain("\x1b[48;2;26;81;47m");
+    expect(out).not.toContain("\x1b[48;2;100;35;35m");
+  });
+
+  test("starts changed-line backgrounds at the sign after the neutral line number", () => {
+    const diff = DiffLines.buildToolDiff(
+      "foo.txt",
+      { lines: ["old"], hasTrailingNewline: true },
+      { lines: ["new"], hasTrailingNewline: true },
+      0
+    );
+
+    if (diff === undefined) {
+      throw new Error("expected diff");
+    }
+
+    const out = DiffRenderer.render({ toolDiff: diff, theme: stubTheme });
+    expect(out).toContain("   1 \x1b[48;2;58;20;20m− old");
+    expect(out).toContain("   1 \x1b[48;2;13;40;24m+ new");
   });
 
   test("does not render any EOF newline marker (EOF state is surfaced by callers, not the renderer)", () => {
