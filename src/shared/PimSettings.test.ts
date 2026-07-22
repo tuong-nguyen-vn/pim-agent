@@ -62,6 +62,8 @@ describe("PimSettings", () => {
       powerline: { enabled: true },
       exa: { apiKey: "exa-test" },
       jina: { apiKey: "jina-test" },
+      painter: {},
+      viewMedia: {},
     });
 
     expect((await stat(testPimHomeDir!)).mode & 0o777).toBe(0o700);

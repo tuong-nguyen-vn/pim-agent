@@ -19,6 +19,9 @@ const CONTINUATION_PREFIX = "   ";
 const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
 const SPINNER_INTERVAL_MS = 80;
 
+export const ACTIVE_YELLOW = "\x1b[38;2;229;216;0m";
+const FG_RESET = "\x1b[39m";
+
 type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
@@ -84,11 +87,14 @@ class MarkdownTitle implements Component {
       : context.isError
         ? "✗"
         : "✓";
-    const prefix =
-      theme.fg(markerColor, ` ${marker}`) +
-      " " +
-      theme.fg(this.labelColor ?? "toolTitle", theme.bold(this.label)) +
-      theme.fg("toolTitle", " ");
+    const isActive = context.isPartial;
+    const markerStr = isActive
+      ? `${ACTIVE_YELLOW} ${marker}${FG_RESET}`
+      : theme.fg(markerColor, ` ${marker}`);
+    const labelStr = isActive
+      ? `${ACTIVE_YELLOW}${theme.bold(this.label)}${FG_RESET}`
+      : theme.fg(this.labelColor ?? "toolTitle", theme.bold(this.label));
+    const prefix = markerStr + " " + labelStr + theme.fg("toolTitle", " ");
     const inner = Math.max(1, width - visibleWidth(prefix));
     const titleLines = renderMarkdownLines({
       text: this.title,
@@ -187,11 +193,13 @@ export function renderResult(
   if (topLine) {
     container.addChild(
       Renderer.makePrefixedBlock({
-        text: styleDottedLine({
-          text: topLine,
-          theme,
-          lineColor: options.isPartial ? "warning" : "accent",
-        }),
+        text: options.isPartial
+          ? styleActiveLine(topLine, theme)
+          : styleDottedLine({
+              text: topLine,
+              theme,
+              lineColor: "accent",
+            }),
         theme,
         prefix: NO_PREFIX,
       })
@@ -302,6 +310,13 @@ function styleDottedLine(args: {
     .split(DOT)
     .map((part) => args.theme.fg(args.lineColor, part))
     .join(args.theme.fg("muted", DOT));
+}
+
+function styleActiveLine(text: string, theme: Theme): string {
+  return text
+    .split(DOT)
+    .map((part) => `${ACTIVE_YELLOW}${part}${FG_RESET}`)
+    .join(theme.fg("muted", DOT));
 }
 
 function titleColorFor(context: RenderContext): ThemeColor {

@@ -31,6 +31,18 @@ const Schema = Type.Object({
     },
     { default: {} }
   ),
+  painter: Type.Object(
+    {
+      model: Type.Optional(Type.String()),
+    },
+    { default: {} }
+  ),
+  viewMedia: Type.Object(
+    {
+      model: Type.Optional(Type.String()),
+    },
+    { default: {} }
+  ),
 });
 
 type Settings = Static<typeof Schema>;
@@ -90,6 +102,20 @@ export class PimSettings {
     return (
       PimSettings.normalize(process.env["JINA_API_KEY"]) ??
       PimSettings.normalize((await PimSettings.get("jina")).apiKey)
+    );
+  }
+
+  public static async getPainterModel(): Promise<string> {
+    return (
+      PimSettings.normalize((await PimSettings.get("painter")).model) ??
+      "gpt-image-2"
+    );
+  }
+
+  public static async getViewMediaModel(): Promise<string> {
+    return (
+      PimSettings.normalize((await PimSettings.get("viewMedia")).model) ??
+      "gemini-3.6-flash"
     );
   }
 

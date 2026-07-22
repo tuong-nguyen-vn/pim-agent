@@ -6,11 +6,14 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { SubagentDetails } from "./subagent";
 import {
+  ACTIVE_YELLOW,
   formatCallTitle,
   formatTopLine,
   renderCall,
   renderResult,
 } from "./render";
+
+const FG_RESET = "\x1b[39m";
 
 const stubTheme = {
   bold: (text: string) => text,
@@ -108,7 +111,10 @@ describe("subagent render formatting", () => {
       isPartial: true,
       isError: false,
     });
-    expect(running.render(80)[0]).toContain("⣿ Subagent ");
+    const runningText = running.render(80)[0] ?? "";
+    expect(runningText).toContain("⣿");
+    expect(runningText).toContain("Subagent");
+    expect(runningText).toContain(ACTIVE_YELLOW);
 
     const failed = renderCall({ prompt: "investigate" }, stubTheme, {
       lastComponent: undefined,
@@ -144,16 +150,14 @@ describe("subagent render formatting", () => {
 
   test("call title colors the Subagent label by running status", () => {
     const pending = tracingTheme();
-    renderCall({ prompt: "investigate" }, pending.theme, {
+    const runningRender = renderCall({ prompt: "investigate" }, pending.theme, {
       lastComponent: undefined,
       isPartial: true,
       isError: false,
     }).render(80);
 
-    expect(pending.calls).toContainEqual({
-      color: "warning",
-      text: "Subagent",
-    });
+    expect(runningRender[0]).toContain(ACTIVE_YELLOW);
+    expect(runningRender[0]).toContain("Subagent");
 
     const done = tracingTheme();
     renderCall({ prompt: "investigate" }, done.theme, {
@@ -165,7 +169,7 @@ describe("subagent render formatting", () => {
     expect(done.calls).toContainEqual({ color: "accent", text: "Subagent" });
   });
 
-  test("top line uses muted dots with accent or warning content", () => {
+  test("top line uses muted dots with accent or active-yellow content", () => {
     const done = tracingTheme();
     renderResult(
       result("body"),
@@ -178,7 +182,7 @@ describe("subagent render formatting", () => {
     expect(done.calls).toContainEqual({ color: "muted", text: "⬝" });
 
     const running = tracingTheme();
-    renderResult(
+    const runningRender = renderResult(
       {
         content: [{ type: "text", text: "ignored body" }],
         details: { ...baseDetails, stopReason: undefined },
@@ -188,8 +192,9 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: true, isError: false }
     ).render(80);
 
-    expect(running.calls).toContainEqual({ color: "warning", text: "$0.23 " });
     expect(running.calls).toContainEqual({ color: "muted", text: "⬝" });
+    expect(runningRender[0]).toContain(ACTIVE_YELLOW);
+    expect(runningRender[0]).toContain("$0.23 ");
   });
 
   test("partial render displays only the running top line", () => {
@@ -210,7 +215,9 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: true, isError: false }
     );
 
-    expect(component.render(80)).toEqual([runningDetails.topLine]);
+    expect(component.render(80)).toEqual([
+      `${ACTIVE_YELLOW}$0.23 ${FG_RESET}⬝${ACTIVE_YELLOW} 0.4%/1.0M ${FG_RESET}⬝${ACTIVE_YELLOW} deepseek-v4-flash ${FG_RESET}⬝${ACTIVE_YELLOW} 3 turns ${FG_RESET}⬝${ACTIVE_YELLOW} grep${FG_RESET}`,
+    ]);
   });
 
   test("collapsed done render hides the final message", () => {

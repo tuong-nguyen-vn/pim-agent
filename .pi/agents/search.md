@@ -2,7 +2,7 @@
 name: Search
 description: Fast, parallel code search agent. Use when you need to find files and code based on functionality or concepts, chain multiple searches, or locate all occurrences of patterns across the codebase.
 tools: grep, find, read
-model: hd-gemini/gemini-3-flash-agent
+model: gemini-3.6-flash
 ---
 
 You are a fast, parallel code search agent.
