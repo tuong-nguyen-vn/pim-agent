@@ -45,6 +45,13 @@ bun install -g @aaroncql/pim-agent
 amp-pi
 ```
 
+Or install directly from this fork:
+
+```sh
+pi install git:github.com/tuong-nguyen-vn/pim-agent
+bun install -g github:tuong-nguyen-vn/pim-agent
+```
+
 > [!IMPORTANT]
 > **Use `amp-pi` instead of `pi` after installing Pim.** The `amp-pi` command is a drop-in replacement for `pi` that [runs Pi via Bun](./bin/pim.ts), enabling Bun-specific APIs. Existing Pi behaviour and extensions should continue to work normally.
 
