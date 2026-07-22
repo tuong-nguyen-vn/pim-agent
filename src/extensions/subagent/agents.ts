@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   CONFIG_DIR_NAME,
   getAgentDir,
@@ -7,7 +8,12 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { PimSettings } from "../../shared/PimSettings";
 
-export type AgentSource = "user" | "project";
+const BUNDLED_AGENTS_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "bundled-agents"
+);
+
+export type AgentSource = "bundled" | "user" | "project";
 
 export type AgentConfig = {
   readonly name: string;
@@ -94,23 +100,28 @@ async function loadAgentsFromDir(
   return configs.filter((c): c is AgentConfig => c !== undefined);
 }
 
-// Discovers predefined agents from ~/.pi/agent/agents (user) and the
-// nearest .pi/agents up from cwd (project); project agents win by name.
+// Discovers predefined agents from bundled defaults, ~/.pi/agent/agents (user),
+// and the nearest .pi/agents up from cwd (project); later sources override earlier
+// ones by case-insensitive name.
 export async function discoverAgents(
   cwd: string
 ): Promise<readonly AgentConfig[]> {
   const projectDir = await findProjectAgentsDir(cwd);
-  const [userAgents, projectAgents] = await Promise.all([
+  const [bundledAgents, userAgents, projectAgents] = await Promise.all([
+    loadAgentsFromDir(BUNDLED_AGENTS_DIR, "bundled"),
     loadAgentsFromDir(join(getAgentDir(), "agents"), "user"),
     projectDir ? loadAgentsFromDir(projectDir, "project") : [],
   ]);
 
   const byName = new Map<string, AgentConfig>();
+  for (const agent of bundledAgents) {
+    byName.set(agent.name.toLowerCase(), agent);
+  }
   for (const agent of userAgents) {
-    byName.set(agent.name, agent);
+    byName.set(agent.name.toLowerCase(), agent);
   }
   for (const agent of projectAgents) {
-    byName.set(agent.name, agent);
+    byName.set(agent.name.toLowerCase(), agent);
   }
 
   const configs = Array.from(byName.values());

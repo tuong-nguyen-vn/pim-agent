@@ -437,19 +437,22 @@ describe("runSubagent with a named agent", () => {
   test("throws with the list of available agents for an unknown name", async () => {
     const fake = new FakeSession(async () => {});
 
-    await expect(
-      runSubagent(
-        "task",
-        projectCtx,
-        undefined,
-        undefined,
-        async () => fake,
-        undefined,
-        "nonexistent"
-      )
-    ).rejects.toThrow(
-      'Unknown subagent "nonexistent". Available: reviewer (project).'
+    const result = runSubagent(
+      "task",
+      projectCtx,
+      undefined,
+      undefined,
+      async () => fake,
+      undefined,
+      "nonexistent"
     );
+
+    await expect(result).rejects.toThrow(
+      'Unknown subagent "nonexistent". Available:'
+    );
+    await expect(result).rejects.toThrow("Search (bundled)");
+    await expect(result).rejects.toThrow("Oracle (bundled)");
+    await expect(result).rejects.toThrow("reviewer (project)");
     expect(fake.promptCalls).toBe(0);
   });
 

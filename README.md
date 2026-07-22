@@ -130,6 +130,9 @@ that model in `~/.pi/agent/models.json` and uses the provider's `baseUrl`,
 `apiKey`, and `api`. If the model or required provider fields are missing, the
 tool reports which Pi model configuration needs to be added.
 
+> [!NOTE]
+> **Bundled Subagents**: Pim ships with two built-in subagents—**Search** (fast, parallel code search) and **Oracle** (expert AI advisor for complex reasoning). These are available by default after installation. To customize them or add your own agents, place markdown configs in `~/.pi/agent/agents` (user-level) or `.pi/agents` (project-level). Project-level agents override user-level agents, which in turn override the bundled defaults (matching is case-insensitive).
+
 For `viewMedia`, the provider's `api` controls the vision request protocol:
 
 | `api` | Endpoint used |
