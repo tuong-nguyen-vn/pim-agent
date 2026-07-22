@@ -146,11 +146,11 @@ class ToolTitle implements Component {
 
 export class Renderer {
   public static readonly GAPPED_PREFIX: PrefixSpec = {
-    prefix: " │ ",
+    prefix: "   ",
     width: 3,
   };
   public static readonly TIGHT_PREFIX: PrefixSpec = {
-    prefix: " │",
+    prefix: "  ",
     width: 2,
   };
 

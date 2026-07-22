@@ -107,11 +107,13 @@ describe("Renderer.renderBorderedResult", () => {
       previewLines: 1,
     });
 
-    expect(component.render(80)).toEqual([
-      " │   src/file.ts:10:before",
-      " │ > src/file.ts:11:matched",
-      " │   src/file.ts:12:after",
+    const rendered = component.render(80);
+    expect(rendered).toEqual([
+      "     src/file.ts:10:before",
+      "   > src/file.ts:11:matched",
+      "     src/file.ts:12:after",
     ]);
+    expect(rendered.every((line) => !line.includes("│"))).toBe(true);
   });
 
   test("can show a truncated successful preview while collapsed", () => {
@@ -223,7 +225,7 @@ describe("Renderer.renderToolCallTitle", () => {
     expect(fallback.calls).toContainEqual({ color: "toolTitle", text: "Bash" });
   });
 
-  test("adds a left border to wrapped title lines", () => {
+  test("indents wrapped title lines without a border", () => {
     const width = 18;
     const component = Renderer.renderToolCallTitle({
       label: "Bash",
@@ -238,7 +240,8 @@ describe("Renderer.renderToolCallTitle", () => {
     const lines = component.render(width);
 
     expect(lines.length).toBeGreaterThan(1);
-    expect(lines.slice(1).every((line) => line.startsWith(" │ "))).toBe(true);
+    expect(lines.slice(1).every((line) => line.startsWith("   "))).toBe(true);
+    expect(lines.slice(1).every((line) => !line.includes("│"))).toBe(true);
     expect(lines.every((line) => visibleWidth(line) <= width)).toBe(true);
   });
 });
