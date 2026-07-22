@@ -87,6 +87,7 @@ export default function (pi: ExtensionAPI): void {
         ),
         separator: " ",
         pad: false,
+        useSpinner: true,
       });
     },
     renderResult(result, options, theme, context) {

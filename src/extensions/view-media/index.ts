@@ -87,6 +87,7 @@ function renderTitle(
     context,
     markerGlyph: Renderer.markerGlyphFor(markerColor),
     separator: " ",
+    useSpinner: true,
   });
 }
 
