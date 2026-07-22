@@ -64,6 +64,7 @@ describe("PimSettings", () => {
       jina: { apiKey: "jina-test" },
       painter: {},
       viewMedia: {},
+      agents: {},
     });
 
     expect((await stat(testPimHomeDir!)).mode & 0o777).toBe(0o700);

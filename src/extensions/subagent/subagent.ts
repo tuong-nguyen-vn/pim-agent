@@ -142,6 +142,12 @@ export function resolveSubagentModel(
     return byId[0];
   }
   if (byId.length > 1) {
+    const authenticated = byId.filter((model) =>
+      parentCtx.modelRegistry.hasConfiguredAuth(model)
+    );
+    if (authenticated.length === 1) {
+      return authenticated[0];
+    }
     throw new Error(
       `Ambiguous model "${reference}" for subagent "${agentLabel}". Use provider/model.`
     );

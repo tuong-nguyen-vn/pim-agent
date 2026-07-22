@@ -17,6 +17,7 @@ export type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
   readonly isError: boolean;
+  readonly invalidate?: () => void;
 };
 
 export type StatefulToolCallTitleContext = RenderContext & {
@@ -34,23 +35,59 @@ export type PrefixSpec = {
   readonly width: number;
 };
 
+const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
+const SPINNER_INTERVAL_MS = 80;
+
 class ToolTitle implements Component {
   private text = "";
   private theme: Theme | undefined;
   private pad = true;
+  private body = "";
+  private markerColor: ThemeColor = "success";
+  private useSpinner = false;
+  private invalidateFn: (() => void) | undefined;
+  private spinnerIndex = 0;
+  private spinnerTimer: ReturnType<typeof setInterval> | undefined;
 
-  public setText(text: string, theme: Theme, pad: boolean | undefined): void {
+  public setText(
+    text: string,
+    theme: Theme,
+    pad: boolean | undefined,
+    spinner?: {
+      readonly body: string;
+      readonly markerColor: ThemeColor;
+      readonly isPartial: boolean;
+      readonly invalidate: (() => void) | undefined;
+    }
+  ): void {
     this.text = text;
     this.theme = theme;
     this.pad = pad ?? this.pad;
+    this.useSpinner = spinner !== undefined;
+    if (spinner) {
+      this.body = spinner.body;
+      this.markerColor = spinner.markerColor;
+      this.invalidateFn = spinner.invalidate;
+      this.updateSpinner(spinner.isPartial);
+    } else {
+      this.stopSpinner();
+    }
   }
 
   public render(width: number): string[] {
+    const theme = this.theme;
+    if (this.useSpinner && this.spinnerTimer && theme) {
+      this.text =
+        theme.fg(
+          this.markerColor,
+          ` ${SPINNER_FRAMES[this.spinnerIndex] ?? "⣿"}`
+        ) + this.body;
+    }
+
     if (!this.text || this.text.trim() === "") {
       return [];
     }
 
-    const theme = this.theme;
     const normalized = this.text.replace(/\t/g, "   ");
     const lines = wrapTextWithAnsi(normalized, Math.max(1, width));
 
@@ -82,6 +119,28 @@ class ToolTitle implements Component {
       return line;
     }
     return line + " ".repeat(Math.max(0, width - visibleWidth(line)));
+  }
+
+  private updateSpinner(isPartial: boolean): void {
+    if (!isPartial || !this.invalidateFn) {
+      this.stopSpinner();
+      return;
+    }
+    if (this.spinnerTimer) {
+      return;
+    }
+    this.spinnerTimer = setInterval(() => {
+      this.spinnerIndex = (this.spinnerIndex + 1) % SPINNER_FRAMES.length;
+      this.invalidateFn?.();
+    }, SPINNER_INTERVAL_MS);
+    this.spinnerTimer.unref?.();
+  }
+
+  private stopSpinner(): void {
+    if (this.spinnerTimer) {
+      clearInterval(this.spinnerTimer);
+      this.spinnerTimer = undefined;
+    }
   }
 }
 
@@ -194,6 +253,7 @@ export class Renderer {
     readonly markerGlyph?: string;
     readonly separator?: string;
     readonly pad?: boolean;
+    readonly useSpinner?: boolean;
   }): Component {
     const { label, title, theme, context, labelColor } = args;
     const markerColor = Renderer.markerColorFor(
@@ -206,13 +266,23 @@ export class Renderer {
       context.lastComponent instanceof ToolTitle
         ? context.lastComponent
         : new ToolTitle();
+    const markerText = theme.fg(markerColor, ` ${glyph}`);
+    const bodyText =
+      " " +
+      theme.fg(labelColor ?? "toolTitle", theme.bold(label)) +
+      theme.fg("toolTitle", separator + title);
     component.setText(
-      theme.fg(markerColor, ` ${glyph}`) +
-        " " +
-        theme.fg(labelColor ?? "toolTitle", theme.bold(label)) +
-        theme.fg("toolTitle", separator + title),
+      markerText + bodyText,
       theme,
-      args.pad
+      args.pad,
+      args.useSpinner
+        ? {
+            body: bodyText,
+            markerColor,
+            isPartial: Boolean(context.isPartial),
+            invalidate: context.invalidate,
+          }
+        : undefined
     );
     return component;
   }
@@ -226,6 +296,7 @@ export class Renderer {
     readonly markerGlyph?: string;
     readonly separator?: string;
     readonly pad?: boolean;
+    readonly useSpinner?: boolean;
   }): Component {
     const state = args.context.state as StatefulToolCallTitleState;
     const component = Renderer.renderToolCallTitle({

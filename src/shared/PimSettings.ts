@@ -43,6 +43,7 @@ const Schema = Type.Object({
     },
     { default: {} }
   ),
+  agents: Type.Record(Type.String(), Type.String(), { default: {} }),
 });
 
 type Settings = Static<typeof Schema>;
@@ -117,6 +118,13 @@ export class PimSettings {
       PimSettings.normalize((await PimSettings.get("viewMedia")).model) ??
       "gemini-3.6-flash"
     );
+  }
+
+  public static async getAgentModel(
+    agentName: string
+  ): Promise<string | undefined> {
+    const agents = await PimSettings.get("agents");
+    return PimSettings.normalize(agents[agentName]);
   }
 
   private static normalize(value: string | undefined): string | undefined {

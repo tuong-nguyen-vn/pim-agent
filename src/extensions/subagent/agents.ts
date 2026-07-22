@@ -5,6 +5,7 @@ import {
   getAgentDir,
   parseFrontmatter,
 } from "@earendil-works/pi-coding-agent";
+import { PimSettings } from "../../shared/PimSettings";
 
 export type AgentSource = "user" | "project";
 
@@ -111,5 +112,13 @@ export async function discoverAgents(
   for (const agent of projectAgents) {
     byName.set(agent.name, agent);
   }
-  return Array.from(byName.values());
+
+  const configs = Array.from(byName.values());
+  const overrides = await Promise.all(
+    configs.map((c) => PimSettings.getAgentModel(c.name))
+  );
+  return configs.map((c, i) => {
+    const override = overrides[i];
+    return override ? { ...c, model: override } : c;
+  });
 }
