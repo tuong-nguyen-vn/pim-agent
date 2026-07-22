@@ -1,5 +1,4 @@
-import { readdirSync, statSync, unlinkSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Paths } from "./Paths";
 
@@ -32,27 +31,32 @@ export class SpillCache {
     }
   }
 
-  public static cleanup(dir = SpillCache.dir(), now = Date.now()): void {
+  public static async cleanup(
+    dir = SpillCache.dir(),
+    now = Date.now()
+  ): Promise<void> {
     let entries: string[];
     try {
-      entries = readdirSync(dir);
+      entries = await readdir(dir);
     } catch {
       return;
     }
 
     const cutoff = now - SpillCache.TTL_MS;
-    for (const name of entries) {
-      if (!SPILL_FILE_RE.test(name)) {
-        continue;
-      }
-      const path = join(dir, name);
-      try {
-        const metadata = statSync(path);
-        if (metadata.isFile() && metadata.mtimeMs < cutoff) {
-          unlinkSync(path);
+    await Promise.all(
+      entries.map(async (name) => {
+        if (!SPILL_FILE_RE.test(name)) {
+          return;
         }
-      } catch {}
-    }
+        const path = join(dir, name);
+        try {
+          const metadata = await stat(path);
+          if (metadata.isFile() && metadata.mtimeMs < cutoff) {
+            await unlink(path);
+          }
+        } catch {}
+      })
+    );
   }
 
   /**
@@ -66,12 +70,14 @@ export class SpillCache {
     }
     SpillCache.installed = true;
 
-    SpillCache.cleanup();
+    void SpillCache.cleanup();
     setInterval(() => {
-      SpillCache.cleanup();
+      void SpillCache.cleanup();
     }, SpillCache.SWEEP_INTERVAL_MS).unref?.();
     process.once("exit", () => {
-      SpillCache.cleanup();
+      // "exit" handlers must be synchronous, so this best-effort sweep only
+      // catches files already resolved by the time exit fires.
+      void SpillCache.cleanup();
     });
 
     // Signal-induced termination skips the "exit" handler, so sweep here too.
@@ -79,10 +85,11 @@ export class SpillCache {
     // happens — merely registering a signal listener otherwise suppresses it.
     for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"] as const) {
       process.once(sig, () => {
-        try {
-          SpillCache.cleanup();
-        } catch {}
-        process.kill(process.pid, sig);
+        SpillCache.cleanup()
+          .catch(() => {})
+          .finally(() => {
+            process.kill(process.pid, sig);
+          });
       });
     }
   }

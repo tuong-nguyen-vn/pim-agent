@@ -161,8 +161,29 @@ export class EditMatcher {
       return [];
     }
 
+    const searchLengths = searchLines.map((line) => line.trim().length);
+
     for (let index = 0; index <= contentLines.length - windowSize; index += 1) {
       const window = contentLines.slice(index, index + windowSize);
+
+      // Levenshtein distance is always >= the trimmed-length difference, so
+      // this gives a cheap upper bound on the window's similarity without
+      // running full Levenshtein on every line. Skipping windows that can't
+      // possibly clear the threshold avoids O(lines * windowSize * lineLen^2)
+      // work on large files where an edit fails to match.
+      let bound = 0;
+      for (let offset = 0; offset < windowSize; offset += 1) {
+        const searchLen = searchLengths[offset] ?? 0;
+        const windowLen = (window[offset] ?? "").trim().length;
+        const longest = Math.max(searchLen, windowLen);
+        bound +=
+          longest === 0 ? 1 : 1 - Math.abs(searchLen - windowLen) / longest;
+      }
+
+      if (bound / windowSize < threshold) {
+        continue;
+      }
+
       let total = 0;
 
       for (let offset = 0; offset < windowSize; offset += 1) {

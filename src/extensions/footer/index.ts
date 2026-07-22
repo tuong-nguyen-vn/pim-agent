@@ -37,8 +37,15 @@ function installAmpChrome(pi: ExtensionAPI, ctx: ExtensionContext): void {
   const disposeGitWatch = watchGitDir(ctx.cwd, () => {
     void refresh();
   });
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   activeGitRefresh = () => {
-    void refresh();
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null;
+      void refresh();
+    }, 200);
   };
   void refresh();
 
@@ -58,6 +65,10 @@ function installAmpChrome(pi: ExtensionAPI, ctx: ExtensionContext): void {
 
   activeChromeCleanup = () => {
     disposeGitWatch();
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
     activeGitRefresh = null;
     activeTui = undefined;
     activeChromeCleanup = null;

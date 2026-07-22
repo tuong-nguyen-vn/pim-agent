@@ -74,7 +74,7 @@ describe("SpillCache.cleanup", () => {
       await utimes(invalidName, oldDate, oldDate);
       await utimes(unrelated, oldDate, oldDate);
 
-      SpillCache.cleanup(root, now);
+      await SpillCache.cleanup(root, now);
 
       expect(await Bun.file(oldBash).exists()).toBe(false);
       expect(await Bun.file(oldFetch).exists()).toBe(false);
@@ -86,9 +86,9 @@ describe("SpillCache.cleanup", () => {
     }
   });
 
-  test("is a no-op when the cache dir is absent", () => {
-    expect(() =>
+  test("is a no-op when the cache dir is absent", async () => {
+    await expect(
       SpillCache.cleanup(join(tmpdir(), "pim-spill-missing-dir"), Date.now())
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
   });
 });
