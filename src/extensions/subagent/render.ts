@@ -14,7 +14,6 @@ import { type PrefixSpec, Renderer } from "../../shared/Renderer";
 import type { SubagentDetails, SubagentSnapshot } from "./subagent";
 
 const DOT = "⬝";
-const NO_PREFIX: PrefixSpec = { prefix: "", width: 0 };
 const CONTINUATION_PREFIX = "   ";
 const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
 const SPINNER_INTERVAL_MS = 80;
@@ -201,7 +200,7 @@ export function renderResult(
               lineColor: "accent",
             }),
         theme,
-        prefix: NO_PREFIX,
+        prefix: Renderer.GAPPED_PREFIX,
       })
     );
   }
@@ -212,13 +211,13 @@ export function renderResult(
         ? makePrefixedMarkdownBlock({
             text: body,
             theme,
-            prefix: NO_PREFIX,
+            prefix: Renderer.GAPPED_PREFIX,
             lineColor: expandedResultColor(details, context.isError),
           })
         : Renderer.makePrefixedBlock({
             text: body,
             theme,
-            prefix: NO_PREFIX,
+            prefix: Renderer.GAPPED_PREFIX,
             lineColor: resultColor(details, context.isError),
           })
     );

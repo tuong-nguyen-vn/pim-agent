@@ -216,7 +216,7 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      `${ACTIVE_YELLOW}$0.23 ${FG_RESET}⬝${ACTIVE_YELLOW} 0.4%/1.0M ${FG_RESET}⬝${ACTIVE_YELLOW} deepseek-v4-flash ${FG_RESET}⬝${ACTIVE_YELLOW} 3 turns ${FG_RESET}⬝${ACTIVE_YELLOW} grep${FG_RESET}`,
+      `   ${ACTIVE_YELLOW}$0.23 ${FG_RESET}⬝${ACTIVE_YELLOW} 0.4%/1.0M ${FG_RESET}⬝${ACTIVE_YELLOW} deepseek-v4-flash ${FG_RESET}⬝${ACTIVE_YELLOW} 3 turns ${FG_RESET}⬝${ACTIVE_YELLOW} grep${FG_RESET}`,
     ]);
   });
 
@@ -231,7 +231,7 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: false, isError: false }
     );
 
-    expect(component.render(80)).toEqual([baseDetails.topLine]);
+    expect(component.render(80)).toEqual([`   ${baseDetails.topLine}`]);
   });
 
   test("expanded done render keeps the top line above the final message", () => {
@@ -243,9 +243,9 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      baseDetails.topLine,
-      "line 1",
-      "line 2",
+      `   ${baseDetails.topLine}`,
+      "   line 1",
+      "   line 2",
     ]);
   });
 
@@ -258,8 +258,8 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      baseDetails.topLine,
-      "Final answer and code",
+      `   ${baseDetails.topLine}`,
+      "   Final answer and code",
     ]);
   });
 
