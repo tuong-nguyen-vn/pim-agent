@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +7,7 @@ import extension, {
   applyMarkdownCodePatches,
   renderAmpCodeBlock,
   resolvePiTuiPathsFromEntry,
+  restoreMarkdownPatches,
 } from "./index";
 
 const tempDirs: string[] = [];
@@ -16,6 +17,10 @@ afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// applyMarkdownCodePatches monkey-patches the shared Markdown prototype via a
+// global symbol; restore it so other suites render default code-block fences.
+afterAll(restoreMarkdownPatches);
 
 const theme = {
   codeBlockIndent: "  ",

@@ -78,6 +78,11 @@ function isMarkdownConstructor(value: unknown): value is MarkdownConstructor {
   );
 }
 
+const patchedConstructors: Array<{
+  readonly prototype: MarkdownRenderPrototype;
+  readonly original: RenderToken;
+}> = [];
+
 function patchMarkdown(Markdown: MarkdownConstructor): boolean {
   const prototype = Markdown.prototype;
   if (prototype[PATCH_STATE]) {
@@ -105,7 +110,16 @@ function patchMarkdown(Markdown: MarkdownConstructor): boolean {
     );
   };
 
+  patchedConstructors.push({ prototype, original: originalRenderToken });
   return true;
+}
+
+/** Undo every prototype patch applied by {@link applyMarkdownCodePatches}. */
+export function restoreMarkdownPatches(): void {
+  for (const { prototype, original } of patchedConstructors.splice(0)) {
+    prototype.renderToken = original;
+    delete prototype[PATCH_STATE];
+  }
 }
 
 function processEntryPoints(): string[] {
