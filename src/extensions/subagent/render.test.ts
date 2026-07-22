@@ -98,8 +98,34 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)[0]?.trimEnd()).toBe(
-      " ▪ Subagent: Review bold and code"
+      " ✓ Subagent Review bold and code"
     );
+  });
+
+  test("call title uses a spinner while running and a cross on error", () => {
+    const running = renderCall({ prompt: "investigate" }, stubTheme, {
+      lastComponent: undefined,
+      isPartial: true,
+      isError: false,
+    });
+    expect(running.render(80)[0]).toContain("⣿ Subagent ");
+
+    const failed = renderCall({ prompt: "investigate" }, stubTheme, {
+      lastComponent: undefined,
+      isPartial: false,
+      isError: true,
+    });
+    expect(failed.render(80)[0]).toContain("✗ Subagent ");
+  });
+
+  test("call title uses the configured agent name", () => {
+    const component = renderCall(
+      { agent: "search", prompt: "find this" },
+      stubTheme,
+      { lastComponent: undefined, isPartial: false, isError: false }
+    );
+
+    expect(component.render(80)[0]).toContain("✓ Search find this");
   });
 
   test("call title uses the default color for prompt text", () => {
@@ -184,7 +210,7 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: true, isError: false }
     );
 
-    expect(component.render(80)).toEqual([` │ ${runningDetails.topLine}`]);
+    expect(component.render(80)).toEqual([runningDetails.topLine]);
   });
 
   test("collapsed done render hides the final message", () => {
@@ -198,7 +224,7 @@ describe("subagent render formatting", () => {
       { lastComponent: undefined, isPartial: false, isError: false }
     );
 
-    expect(component.render(80)).toEqual([` │ ${baseDetails.topLine}`]);
+    expect(component.render(80)).toEqual([baseDetails.topLine]);
   });
 
   test("expanded done render keeps the top line above the final message", () => {
@@ -210,9 +236,9 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      ` │ ${baseDetails.topLine}`,
-      " │ line 1",
-      " │ line 2",
+      baseDetails.topLine,
+      "line 1",
+      "line 2",
     ]);
   });
 
@@ -225,8 +251,8 @@ describe("subagent render formatting", () => {
     );
 
     expect(component.render(80)).toEqual([
-      ` │ ${baseDetails.topLine}`,
-      " │ Final answer and code",
+      baseDetails.topLine,
+      "Final answer and code",
     ]);
   });
 

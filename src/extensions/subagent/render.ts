@@ -14,11 +14,16 @@ import { type PrefixSpec, Renderer } from "../../shared/Renderer";
 import type { SubagentDetails, SubagentSnapshot } from "./subagent";
 
 const DOT = "⬝";
+const NO_PREFIX: PrefixSpec = { prefix: "", width: 0 };
+const CONTINUATION_PREFIX = "   ";
+const SPINNER_FRAMES = ["⣿", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽", "⣾"] as const;
+const SPINNER_INTERVAL_MS = 80;
 
 type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
   readonly isError: boolean;
+  readonly invalidate?: () => void;
 };
 
 type StatusFields = Pick<
@@ -45,6 +50,8 @@ class MarkdownTitle implements Component {
   private theme: Theme | undefined;
   private context: RenderContext | undefined;
   private labelColor: ThemeColor | undefined;
+  private spinnerIndex = 0;
+  private spinnerTimer: ReturnType<typeof setInterval> | undefined;
 
   public set(args: {
     readonly label: string;
@@ -58,6 +65,7 @@ class MarkdownTitle implements Component {
     this.theme = args.theme;
     this.context = args.context;
     this.labelColor = args.labelColor;
+    this.updateSpinner();
   }
 
   public render(width: number): string[] {
@@ -71,11 +79,16 @@ class MarkdownTitle implements Component {
       Boolean(context.isPartial),
       Boolean(context.isError)
     );
+    const marker = context.isPartial
+      ? (SPINNER_FRAMES[this.spinnerIndex] ?? "⣿")
+      : context.isError
+        ? "✗"
+        : "✓";
     const prefix =
-      theme.fg(markerColor, " ▪") +
+      theme.fg(markerColor, ` ${marker}`) +
       " " +
       theme.fg(this.labelColor ?? "toolTitle", theme.bold(this.label)) +
-      theme.fg("toolTitle", ": ");
+      theme.fg("toolTitle", " ");
     const inner = Math.max(1, width - visibleWidth(prefix));
     const titleLines = renderMarkdownLines({
       text: this.title,
@@ -83,25 +96,47 @@ class MarkdownTitle implements Component {
       width: inner,
     });
     const lines = titleLines.length > 0 ? titleLines : [""];
-    const out = [padLine(prefix + (lines[0] ?? ""), width)];
+    const out = [prefix + (lines[0] ?? "")];
 
     for (const line of lines.slice(1)) {
-      out.push(
-        padLine(
-          theme.fg("toolOutput", Renderer.GAPPED_PREFIX.prefix) + line,
-          width
-        )
-      );
+      out.push(theme.fg("toolOutput", CONTINUATION_PREFIX) + line);
     }
 
     return out;
   }
 
   public invalidate(): void {}
+
+  private updateSpinner(): void {
+    const context = this.context;
+    if (!context?.isPartial || !context.invalidate) {
+      if (this.spinnerTimer) {
+        clearInterval(this.spinnerTimer);
+        this.spinnerTimer = undefined;
+      }
+      return;
+    }
+    if (this.spinnerTimer) {
+      return;
+    }
+    this.spinnerTimer = setInterval(() => {
+      this.spinnerIndex = (this.spinnerIndex + 1) % SPINNER_FRAMES.length;
+      this.context?.invalidate?.();
+    }, SPINNER_INTERVAL_MS);
+    this.spinnerTimer.unref?.();
+  }
 }
 
 export function formatCallTitle(prompt: string | undefined): string {
   return (prompt ?? "...").split(/\r?\n/u)[0]?.trim() || "...";
+}
+
+function formatAgentLabel(agent: string | undefined): string {
+  const trimmed = agent?.trim();
+  if (!trimmed) {
+    return "Subagent";
+  }
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 export function formatTopLine(snapshot: StatusFields): string {
@@ -114,7 +149,7 @@ export function formatTopLine(snapshot: StatusFields): string {
 }
 
 export function renderCall(
-  args: { readonly prompt?: string } | undefined,
+  args: { readonly agent?: string; readonly prompt?: string } | undefined,
   theme: Theme,
   context: RenderContext
 ): Component {
@@ -123,7 +158,7 @@ export function renderCall(
       ? context.lastComponent
       : new MarkdownTitle();
   component.set({
-    label: "Subagent",
+    label: formatAgentLabel(args?.agent),
     title: formatCallTitle(args?.prompt),
     theme,
     context,
@@ -158,7 +193,7 @@ export function renderResult(
           lineColor: options.isPartial ? "warning" : "accent",
         }),
         theme,
-        prefix: Renderer.GAPPED_PREFIX,
+        prefix: NO_PREFIX,
       })
     );
   }
@@ -169,13 +204,13 @@ export function renderResult(
         ? makePrefixedMarkdownBlock({
             text: body,
             theme,
-            prefix: Renderer.GAPPED_PREFIX,
+            prefix: NO_PREFIX,
             lineColor: expandedResultColor(details, context.isError),
           })
         : Renderer.makePrefixedBlock({
             text: body,
             theme,
-            prefix: Renderer.GAPPED_PREFIX,
+            prefix: NO_PREFIX,
             lineColor: resultColor(details, context.isError),
           })
     );
@@ -256,10 +291,6 @@ function makeMarkdownTheme(theme: Theme): MarkdownTheme {
 
 function trimRenderedLine(line: string): string {
   return line.trimEnd();
-}
-
-function padLine(line: string, width: number): string {
-  return line + " ".repeat(Math.max(0, width - visibleWidth(line)));
 }
 
 function styleDottedLine(args: {

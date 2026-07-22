@@ -33,11 +33,17 @@ function renderTitle(
 ) {
   const state = context.state as WebSearchCallState;
   const count = state.resultCount ?? clampNumResults(input.numResults);
+  const markerColor = Renderer.markerColorFor(
+    Boolean(context.isPartial),
+    Boolean(context.isError)
+  );
   return Renderer.renderStatefulToolCallTitle({
     label: "Web Search",
-    title: formatTitle(input.query, count),
+    title: theme.fg("muted", formatTitle(input.query, count)),
     theme,
     context,
+    markerGlyph: Renderer.markerGlyphFor(markerColor),
+    separator: " ",
   });
 }
 
@@ -104,8 +110,8 @@ export default function (pi: ExtensionAPI): void {
 
       if (details?.count !== undefined) {
         state.resultCount = details.count;
-        renderTitle(context.args ?? {}, theme, context);
       }
+      renderTitle(context.args ?? {}, theme, context);
 
       return Renderer.renderBorderedResult({
         result,

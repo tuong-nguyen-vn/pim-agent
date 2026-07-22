@@ -44,6 +44,7 @@ describe("discoverAgents", () => {
         "name: reviewer",
         "description: Reviews code for bugs",
         "tools: read, grep",
+        "model: anthropic/claude-haiku-4-5",
         "---",
         "You are a meticulous code reviewer.",
       ].join("\n")
@@ -57,6 +58,7 @@ describe("discoverAgents", () => {
         name: "reviewer",
         description: "Reviews code for bugs",
         tools: ["read", "grep"],
+        model: "anthropic/claude-haiku-4-5",
         systemPrompt: "You are a meticulous code reviewer.",
         source: "user",
       },
@@ -110,6 +112,7 @@ describe("discoverAgents", () => {
         name: "helper",
         description: "project helper",
         tools: undefined,
+        model: undefined,
         systemPrompt: "project prompt",
         source: "project",
       },

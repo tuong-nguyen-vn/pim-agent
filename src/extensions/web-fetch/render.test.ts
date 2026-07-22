@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatTitle } from "./render";
+import { formatTitle, renderTitle } from "./render";
 
 describe("formatTitle", () => {
   test("returns placeholder and default format when url is undefined", () => {
@@ -52,5 +52,24 @@ describe("formatTitle", () => {
         totalBytes: 2.5 * 1024 * 1024,
       })
     ).toBe("https://example.com (2.5MB HTML)");
+  });
+
+  test("renders only the URL with the requested purple color", () => {
+    expect(renderTitle("https://example.com", undefined, undefined)).toBe(
+      "\x1b[38;2;199;146;234mhttps://example.com\x1b[39m (Markdown)"
+    );
+  });
+
+  test("can mute only the metadata after the purple URL", () => {
+    expect(
+      renderTitle(
+        "https://example.com",
+        undefined,
+        undefined,
+        (text) => `<muted>${text}</muted>`
+      )
+    ).toBe(
+      "\x1b[38;2;199;146;234mhttps://example.com\x1b[39m<muted> (Markdown)</muted>"
+    );
   });
 });

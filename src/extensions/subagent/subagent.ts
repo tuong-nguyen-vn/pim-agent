@@ -13,6 +13,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type {
   AssistantMessage,
+  Model,
   TextContent,
   Usage,
 } from "@earendil-works/pi-ai";
@@ -79,7 +80,8 @@ export type SubagentSession = {
 export type CreateSubagentSession = (
   parentCtx: ExtensionContext,
   activeToolNames: readonly string[] | undefined,
-  agent: AgentConfig | undefined
+  agent: AgentConfig | undefined,
+  model: Model<any> | undefined
 ) => Promise<SubagentSession>;
 
 export function childToolNames(
@@ -91,11 +93,14 @@ export function childToolNames(
 export async function createSdkSubagentSession(
   parentCtx: ExtensionContext,
   activeToolNames: readonly string[] | undefined,
-  agent: AgentConfig | undefined
+  agent: AgentConfig | undefined,
+  model: Model<any> | undefined
 ): Promise<SubagentSession> {
+  const systemPrompt = agent?.systemPrompt.trim();
   const loader = new DefaultResourceLoader({
     cwd: parentCtx.cwd,
     agentDir: getAgentDir(),
+    appendSystemPrompt: systemPrompt ? [systemPrompt] : undefined,
   });
   await loader.reload();
 
@@ -104,7 +109,7 @@ export async function createSdkSubagentSession(
   const { session } = await createAgentSession({
     cwd: parentCtx.cwd,
     agentDir: getAgentDir(),
-    model: parentCtx.model,
+    model,
     sessionManager: SessionManager.inMemory(parentCtx.cwd),
     resourceLoader: loader,
     tools: baseTools ? [...childToolNames(baseTools)] : undefined,
@@ -113,11 +118,45 @@ export async function createSdkSubagentSession(
   return session;
 }
 
+export function resolveSubagentModel(
+  parentCtx: ExtensionContext,
+  agent: AgentConfig | undefined
+): Model<any> | undefined {
+  const reference = agent?.model?.trim();
+  if (!reference) {
+    return parentCtx.model;
+  }
+
+  const normalized = reference.toLowerCase();
+  const agentLabel = agent?.name ?? "configured";
+  const models = parentCtx.modelRegistry.getAll();
+  const canonical = models.filter(
+    (model) => `${model.provider}/${model.id}`.toLowerCase() === normalized
+  );
+  if (canonical.length === 1) {
+    return canonical[0];
+  }
+
+  const byId = models.filter((model) => model.id.toLowerCase() === normalized);
+  if (byId.length === 1) {
+    return byId[0];
+  }
+  if (byId.length > 1) {
+    throw new Error(
+      `Ambiguous model "${reference}" for subagent "${agentLabel}". Use provider/model.`
+    );
+  }
+  throw new Error(
+    `Unknown model "${reference}" for subagent "${agentLabel}". Use an exact model id or provider/model.`
+  );
+}
+
 function resolveAgent(
   agentName: string,
   agents: readonly AgentConfig[]
 ): AgentConfig {
-  const agent = agents.find((a) => a.name === agentName);
+  const normalized = agentName.trim().toLowerCase();
+  const agent = agents.find((a) => a.name.toLowerCase() === normalized);
   if (agent) {
     return agent;
   }
@@ -128,10 +167,7 @@ function resolveAgent(
 }
 
 function promptFor(prompt: string, agent: AgentConfig | undefined): string {
-  if (!agent?.systemPrompt.trim()) {
-    return prompt;
-  }
-  return `${agent.systemPrompt.trim()}\n\n---\n\nTask: ${prompt}`;
+  return agent ? `Task: ${prompt}` : prompt;
 }
 
 export async function runSubagent(
@@ -152,15 +188,17 @@ export async function runSubagent(
     const agent = agentName
       ? resolveAgent(agentName, await discoverAgents(parentCtx.cwd))
       : undefined;
+    const model = resolveSubagentModel(parentCtx, agent);
 
     const capture = new SubagentEventCapture(onUpdate, {
-      contextWindow: parentCtx.model?.contextWindow,
-      model: parentCtx.model?.id,
+      contextWindow: model?.contextWindow,
+      model: model?.id,
     });
     let session: SubagentSession | undefined;
     let thrown: unknown;
     let abortRequested = false;
     let abortPromise: Promise<void> | undefined;
+    let unsubscribe: (() => void) | undefined;
 
     const ensureAbort = (): Promise<void> => {
       if (!session) {
@@ -176,11 +214,15 @@ export async function runSubagent(
     };
 
     try {
-      session = await createSession(parentCtx, activeToolNames, agent);
-      session.subscribe((event) => capture.handle(event));
-      signal?.addEventListener("abort", onAbort, { once: true });
       if (signal?.aborted) {
         abortRequested = true;
+        throw new Error("subagent aborted before start");
+      }
+      signal?.addEventListener("abort", onAbort, { once: true });
+      session = await createSession(parentCtx, activeToolNames, agent, model);
+      unsubscribe = session.subscribe((event) => capture.handle(event));
+      if (abortRequested) {
+        await ensureAbort();
         throw new Error("subagent aborted before start");
       }
       await session.prompt(promptFor(prompt, agent));
@@ -191,7 +233,10 @@ export async function runSubagent(
       thrown = err;
     } finally {
       signal?.removeEventListener("abort", onAbort);
-      await ensureAbort();
+      if (abortRequested) {
+        await ensureAbort();
+      }
+      unsubscribe?.();
       session?.dispose();
     }
 

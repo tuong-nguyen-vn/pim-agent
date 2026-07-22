@@ -12,6 +12,7 @@ export type AgentConfig = {
   readonly name: string;
   readonly description: string;
   readonly tools: readonly string[] | undefined;
+  readonly model: string | undefined;
   readonly systemPrompt: string;
   readonly source: AgentSource;
 };
@@ -67,6 +68,7 @@ async function loadAgentConfig(
     name: frontmatter.name,
     description: frontmatter.description,
     tools: tools && tools.length > 0 ? tools : undefined,
+    model: frontmatter.model?.trim() || undefined,
     systemPrompt: body,
     source,
   };

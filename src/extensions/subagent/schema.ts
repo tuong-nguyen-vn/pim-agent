@@ -4,7 +4,7 @@ export const subagentSchema = Type.Object({
   agent: Type.Optional(
     Type.String({
       description:
-        "Name of a predefined agent (from ~/.pi/agent/agents or the project's .pi/agents) to run with instead of the parent's default system prompt and tools. Omit for a plain subagent.",
+        'Name of a predefined agent from ~/.pi/agent/agents or the project\'s .pi/agents. Use "Search" for broad codebase discovery and "Oracle" for deep technical reasoning, architecture, planning, or review. Omit only for a plain isolated subagent that should inherit the current model, prompt, and active tools.',
     })
   ),
   prompt: Type.String({

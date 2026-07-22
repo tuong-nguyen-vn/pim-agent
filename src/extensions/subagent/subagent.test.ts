@@ -8,6 +8,7 @@ import type { AgentConfig } from "./agents";
 import {
   applyOutputCap,
   childToolNames,
+  resolveSubagentModel,
   runSubagent,
   SubagentEventCapture,
   type SubagentSession,
@@ -100,6 +101,53 @@ describe("childToolNames", () => {
       "read",
       "bash",
     ]);
+  });
+});
+
+describe("resolveSubagentModel", () => {
+  const parentModel = {
+    provider: "anthropic",
+    id: "parent-model",
+    contextWindow: 200_000,
+  } as never;
+  const configuredModel = {
+    provider: "google",
+    id: "gemini-flash",
+    contextWindow: 1_000_000,
+  } as never;
+  const modelCtx = {
+    model: parentModel,
+    modelRegistry: { getAll: () => [parentModel, configuredModel] },
+  } as unknown as ExtensionContext;
+
+  test("plain subagents inherit the parent's current model", () => {
+    expect(resolveSubagentModel(modelCtx, undefined)).toBe(parentModel);
+  });
+
+  test("named agents can select a configured provider/model", () => {
+    expect(
+      resolveSubagentModel(modelCtx, {
+        name: "scout",
+        description: "Scout",
+        tools: undefined,
+        model: "google/gemini-flash",
+        systemPrompt: "Scout the codebase.",
+        source: "project",
+      })
+    ).toBe(configuredModel);
+  });
+
+  test("unknown configured models fail instead of silently falling back", () => {
+    expect(() =>
+      resolveSubagentModel(modelCtx, {
+        name: "scout",
+        description: "Scout",
+        tools: undefined,
+        model: "missing-model",
+        systemPrompt: "Scout the codebase.",
+        source: "project",
+      })
+    ).toThrow('Unknown model "missing-model"');
   });
 });
 
@@ -219,7 +267,7 @@ describe("runSubagent", () => {
     expect(result.content).toEqual([{ type: "text", text: "hello" }]);
     expect(result.details.fullOutput).toBe("hello");
     expect(fake.promptCalls).toBe(1);
-    expect(fake.abortCalls).toBe(1);
+    expect(fake.abortCalls).toBe(0);
     expect(fake.disposeCalls).toBe(1);
   });
 
@@ -271,8 +319,8 @@ describe("runSubagent", () => {
     ).rejects.toThrow("Subagent failed: subagent aborted before start");
 
     expect(fake.promptCalls).toBe(0);
-    expect(fake.abortCalls).toBe(1);
-    expect(fake.disposeCalls).toBe(1);
+    expect(fake.abortCalls).toBe(0);
+    expect(fake.disposeCalls).toBe(0);
   });
 
   test("mid-run abort aborts once, tears down, and rejects", async () => {
@@ -352,7 +400,7 @@ describe("runSubagent with a named agent", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  test("prepends the agent's system prompt and restricts tools passed to the session", async () => {
+  test("uses the named agent config and sends only the task as the user prompt", async () => {
     let receivedAgent: AgentConfig | undefined;
     let receivedPrompt: string | undefined;
     const fake = new FakeSession(async (session, prompt) => {
@@ -378,12 +426,11 @@ describe("runSubagent with a named agent", () => {
       name: "reviewer",
       description: "Reviews code",
       tools: ["read", "grep"],
+      model: undefined,
       systemPrompt: "You are a meticulous code reviewer.",
       source: "project",
     });
-    expect(receivedPrompt).toBe(
-      "You are a meticulous code reviewer.\n\n---\n\nTask: find bugs"
-    );
+    expect(receivedPrompt).toBe("Task: find bugs");
     expect(result.content).toEqual([{ type: "text", text: "done" }]);
   });
 
@@ -404,5 +451,28 @@ describe("runSubagent with a named agent", () => {
       'Unknown subagent "nonexistent". Available: reviewer (project).'
     );
     expect(fake.promptCalls).toBe(0);
+  });
+
+  test("resolves configured agent names case-insensitively", async () => {
+    let receivedAgent: AgentConfig | undefined;
+    const fake = new FakeSession(async (session) => {
+      session.emit({ type: "message_start", message: assistant([]) });
+      session.emit({ type: "message_end", message: assistant(["done"]) });
+    });
+
+    await runSubagent(
+      "find exports",
+      projectCtx,
+      undefined,
+      undefined,
+      async (_parentCtx, _activeToolNames, agent) => {
+        receivedAgent = agent;
+        return fake;
+      },
+      undefined,
+      "REVIEWER"
+    );
+
+    expect(receivedAgent?.name).toBe("reviewer");
   });
 });

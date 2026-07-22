@@ -1,19 +1,52 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import { PimSettings } from "../../shared/PimSettings";
-import { Renderer } from "../../shared/Renderer";
+import {
+  Renderer,
+  type StatefulToolCallTitleContext,
+  type StatefulToolCallTitleState,
+} from "../../shared/Renderer";
 import { SpillCache } from "../../shared/SpillCache";
 import { Tools } from "../../shared/Tools";
 import { executeFetch, validatePublicUrl, type WebFetchOutcome } from "./fetch";
 import { JinaReaderClient } from "./JinaReaderClient";
-import { formatTitle, type WebFetchTitleOutcome } from "./render";
+import {
+  renderTitle as formatRenderedTitle,
+  type WebFetchTitleOutcome,
+} from "./render";
 import { type WebFetchInput, webFetchSchema } from "./schema";
 import { WebViewFetchClient } from "./WebViewFetchClient";
 
 const PREVIEW_LINES = 10;
 
-type WebFetchRenderState = {
+type WebFetchRenderState = StatefulToolCallTitleState & {
   outcome?: WebFetchTitleOutcome;
 };
+
+type WebFetchRenderContext = StatefulToolCallTitleContext & {
+  readonly args?: Partial<WebFetchInput>;
+};
+
+function renderTitle(
+  input: Partial<WebFetchInput>,
+  theme: Theme,
+  context: WebFetchRenderContext
+) {
+  const state = context.state as WebFetchRenderState;
+  const markerColor = Renderer.markerColorFor(
+    Boolean(context.isPartial),
+    Boolean(context.isError)
+  );
+  return Renderer.renderStatefulToolCallTitle({
+    label: "Web Fetch",
+    title: formatRenderedTitle(input.url, input.format, state.outcome, (text) =>
+      theme.fg("muted", text)
+    ),
+    theme,
+    context,
+    markerGlyph: Renderer.markerGlyphFor(markerColor),
+    separator: " ",
+  });
+}
 
 async function createJina(): Promise<JinaReaderClient> {
   const apiKey = await PimSettings.getJinaApiKey();
@@ -66,14 +99,11 @@ export default function (pi: ExtensionAPI): void {
       };
     },
     renderCall(args, theme, context) {
-      const input = (args ?? {}) as Partial<WebFetchInput>;
-      const state = context.state as WebFetchRenderState;
-      return Renderer.renderToolCallTitle({
-        label: "Web Fetch",
-        title: formatTitle(input.url, input.format, state.outcome),
+      return renderTitle(
+        (args ?? {}) as Partial<WebFetchInput>,
         theme,
-        context,
-      });
+        context
+      );
     },
     renderResult(result, options, theme, context) {
       const state = context.state as WebFetchRenderState;
@@ -91,9 +121,10 @@ export default function (pi: ExtensionAPI): void {
             format: details.format,
             totalBytes: details.totalBytes,
           };
-          context.invalidate();
         }
       }
+
+      renderTitle(context.args ?? {}, theme, context);
 
       return Renderer.renderBorderedResult({
         result,
