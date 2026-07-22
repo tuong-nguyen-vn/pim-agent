@@ -1,5 +1,12 @@
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { existsSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Markdown, type MarkdownTheme } from "@earendil-works/pi-tui";
+import {
+  Markdown as LocalMarkdown,
+  type MarkdownTheme,
+} from "@earendil-works/pi-tui";
 
 const PATCH_STATE = Symbol.for("pim.markdown-code-renderer");
 
@@ -16,6 +23,10 @@ type RenderToken = (
   nextTokenType?: string,
   styleContext?: unknown
 ) => string[];
+
+type MarkdownConstructor = {
+  readonly prototype: MarkdownRenderPrototype;
+};
 
 type MarkdownRenderPrototype = {
   renderToken: RenderToken;
@@ -58,10 +69,19 @@ export function renderAmpCodeBlock(
   return lines;
 }
 
-export default function (pi: ExtensionAPI): void {
-  const prototype = Markdown.prototype as unknown as MarkdownRenderPrototype;
+function isMarkdownConstructor(value: unknown): value is MarkdownConstructor {
+  const ctor = value as MarkdownConstructor | undefined;
+  return (
+    typeof ctor === "function" &&
+    !!ctor.prototype &&
+    typeof ctor.prototype.renderToken === "function"
+  );
+}
+
+function patchMarkdown(Markdown: MarkdownConstructor): boolean {
+  const prototype = Markdown.prototype;
   if (prototype[PATCH_STATE]) {
-    return;
+    return false;
   }
 
   const originalRenderToken = prototype.renderToken;
@@ -85,8 +105,109 @@ export default function (pi: ExtensionAPI): void {
     );
   };
 
-  // Keep the extension registered with Pi's lifecycle even though the patch is
-  // applied at import/load time. session_start is a no-op marker so reloads are
-  // idempotent via PATCH_STATE.
-  pi.on("session_start", () => {});
+  return true;
+}
+
+function processEntryPoints(): string[] {
+  const entries: string[] = [];
+  const argv1 = process.argv[1];
+  if (argv1) {
+    entries.push(argv1);
+  }
+  // amp-pi: `bun /path/to/pi-coding-agent/dist/cli.js ...` → Bun.main is cli.js
+  const bunMain =
+    typeof Bun !== "undefined"
+      ? (Bun as { main?: string }).main
+      : undefined;
+  if (bunMain && bunMain !== argv1) {
+    entries.push(bunMain);
+  }
+  return entries;
+}
+
+function resolvePiTuiFromEntry(entry: string): string | undefined {
+  try {
+    return createRequire(entry).resolve("@earendil-works/pi-tui");
+  } catch {
+    // Fall through to manual walk — some entry shims are not valid require roots.
+  }
+
+  // Walk up from the CLI file looking for a nested pi-tui install.
+  let dir = dirname(entry);
+  for (let i = 0; i < 8; i++) {
+    const candidate = join(
+      dir,
+      "node_modules",
+      "@earendil-works",
+      "pi-tui",
+      "dist",
+      "index.js"
+    );
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return undefined;
+}
+
+/**
+ * Under Bun (`amp-pi`), jiti aliasing does not force extensions onto Pi's
+ * bundled `pi-tui` instance. A plain `import { Markdown } from "pi-tui"` then
+ * patches pim-agent's copy while the UI still renders with Pi's copy — fences
+ * remain. Resolve every reachable Markdown constructor and patch them all.
+ */
+export async function resolveMarkdownConstructors(): Promise<
+  MarkdownConstructor[]
+> {
+  const constructors = new Map<object, MarkdownConstructor>();
+
+  const add = (value: unknown): void => {
+    if (isMarkdownConstructor(value)) {
+      constructors.set(value, value);
+    }
+  };
+
+  add(LocalMarkdown);
+
+  for (const entry of processEntryPoints()) {
+    const resolved = resolvePiTuiFromEntry(entry);
+    if (!resolved) {
+      continue;
+    }
+    try {
+      const mod = (await import(pathToFileURL(resolved).href)) as {
+        Markdown?: unknown;
+      };
+      add(mod.Markdown);
+    } catch {
+      // Ignore unreadable runtime modules; local import may still work.
+    }
+  }
+
+  return [...constructors.values()];
+}
+
+export async function applyMarkdownCodePatches(): Promise<number> {
+  let patched = 0;
+  for (const Markdown of await resolveMarkdownConstructors()) {
+    if (patchMarkdown(Markdown)) {
+      patched++;
+    }
+  }
+  return patched;
+}
+
+export default async function (pi: ExtensionAPI): Promise<void> {
+  // Await so the runtime constructor is patched before the first render.
+  await applyMarkdownCodePatches();
+
+  // Re-apply after /reload in case a fresh Markdown copy appears.
+  pi.on("session_start", () => {
+    void applyMarkdownCodePatches();
+  });
 }
