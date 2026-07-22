@@ -18,6 +18,8 @@ import {
 const PREVIEW_LINES = 10;
 const DEFAULT_PATH_FORMAT: GlobPathFormat = "relative";
 
+const REPLACED_PI_TOOLS = ["ls", "find"] as const;
+
 type GlobCallState = StatefulToolCallTitleState & {
   fileCount?: number;
 };
@@ -141,5 +143,23 @@ export default function (pi: ExtensionAPI): void {
         prefix: { prefix: "   ", width: 3 },
       });
     },
+  });
+
+  const hideReplacedTools = (): void => {
+    const active = pi.getActiveTools();
+    const filtered = active.filter(
+      (tool) =>
+        !REPLACED_PI_TOOLS.includes(tool as (typeof REPLACED_PI_TOOLS)[number])
+    );
+    if (filtered.length !== active.length) {
+      pi.setActiveTools(filtered);
+    }
+  };
+
+  pi.on("session_start", () => {
+    hideReplacedTools();
+  });
+  pi.on("before_agent_start", () => {
+    hideReplacedTools();
   });
 }

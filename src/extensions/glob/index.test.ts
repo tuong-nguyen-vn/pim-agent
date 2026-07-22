@@ -18,6 +18,11 @@ function registeredTool(): ToolDefinition {
     registerTool(def: ToolDefinition): void {
       tool = def;
     },
+    on(): void {},
+    getActiveTools(): readonly string[] {
+      return [];
+    },
+    setActiveTools(): void {},
   } as unknown as ExtensionAPI);
 
   if (tool === undefined) {
