@@ -38,25 +38,25 @@ Ensure that you have [Pi](https://pi.dev/docs/latest/quickstart) and [Bun](https
 # First, install Pim as a Pi extension:
 pi install npm:@aaroncql/pim-agent
 
-# Then, install the Bun-native `pim` launcher:
+# Then, install the Bun-native `amp-pi` launcher:
 bun install -g @aaroncql/pim-agent
 
-# Finally, launch pim:
-pim
+# Finally, launch amp-pi:
+amp-pi
 ```
 
 > [!IMPORTANT]
-> **Use `pim` instead of `pi` after installing Pim.** The `pim` command is a drop-in replacement for `pi` that [runs Pi via Bun](./bin/pim.ts), enabling Bun-specific APIs. Existing Pi behaviour and extensions should continue to work normally.
+> **Use `amp-pi` instead of `pi` after installing Pim.** The `amp-pi` command is a drop-in replacement for `pi` that [runs Pi via Bun](./bin/pim.ts), enabling Bun-specific APIs. Existing Pi behaviour and extensions should continue to work normally.
 
-If `pim` cannot locate Pi, make sure `pi` is on your `PATH`, or set:
+If `amp-pi` cannot locate Pi, make sure `pi` is on your `PATH`, or set:
 
 ```sh
-PIM_PI_CLI=/path/to/pi/dist/cli.js pim
+PIM_PI_CLI=/path/to/pi/dist/cli.js amp-pi
 ```
 
 ### Enabling/Disabling Extensions
 
-Pim ships a collection of extensions which are all enabled by default. To disable specific ones that don't suit your needs, run `pim config` and toggle them there.
+Pim ships a collection of extensions which are all enabled by default. To disable specific ones that don't suit your needs, run `amp-pi config` and toggle them there.
 
 Some Pim extensions can be toggled directly within the TUI as well: `/tps` for inference speed reporting.
 
@@ -83,7 +83,7 @@ For heavier usage, add API keys to `~/.pim/settings.json`:
 Environment variables override `settings.json` when present:
 
 ```sh
-EXA_API_KEY='api_key_here' JINA_API_KEY='api_key_here' pim
+EXA_API_KEY='api_key_here' JINA_API_KEY='api_key_here' amp-pi
 ```
 
 ### Pim Configuration
@@ -250,15 +250,15 @@ Then, install and run as a persistent daemon (_recommended_):
 
 ```sh
 # Supports Linux (systemd) and macOS (launchd)
-pim --mode telegram --install
+amp-pi --mode telegram --install
 
 # Tear down
-pim --mode telegram --uninstall
+amp-pi --mode telegram --uninstall
 ```
 
 The daemon auto-restarts on failure and supports the `/update` command for in-chat updates.
 
-For development, run standalone with `pim --mode telegram` instead.
+For development, run standalone with `amp-pi --mode telegram` instead.
 
 ### Commands
 

@@ -17,7 +17,7 @@
     "url": "git+https://github.com/AaronCQL/pim-agent.git"
   },
   "bin": {
-    "pim": "bin/pim.ts"
+    "amp-pi": "bin/pim.ts"
   },
   "files": [
     "bin/",
@@ -37,7 +37,7 @@
     "image": "https://raw.githubusercontent.com/AaronCQL/pim-agent/refs/heads/main/assets/demo.webp"
   },
   "scripts": {
-    "dev": "bun link && pim",
+    "dev": "bun link && amp-pi",
     "typecheck": "tsgo --noEmit",
     "test": "bun test src --only-failures",
     "lint": "oxlint . --fix",

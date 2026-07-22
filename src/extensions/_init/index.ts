@@ -21,8 +21,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     throw new Error(
       "Pim requires the Bun runtime.\n" +
         "Install the Pim launcher: bun install -g @aaroncql/pim-agent\n" +
-        "Then run: pim\n" +
-        "If pim cannot locate Pi, ensure `pi` is on PATH or set PIM_PI_CLI=/path/to/cli.js"
+        "Then run: amp-pi\n" +
+        "If amp-pi cannot locate Pi, ensure `pi` is on PATH or set PIM_PI_CLI=/path/to/cli.js"
     );
   }
 
