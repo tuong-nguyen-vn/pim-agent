@@ -3,11 +3,14 @@ import {
   type ExtensionAPI,
   type ExtensionContext,
   type KeybindingsManager,
+  type Theme,
 } from "@earendil-works/pi-coding-agent";
 import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { Paths } from "../../shared/Paths";
 import type { GitState } from "./git";
+
+const GIT_BRANCH_ICON = "\ue725";
 
 type AmpEditorOptions = {
   readonly pi: ExtensionAPI;
@@ -85,21 +88,24 @@ function formatContext(ctx: ExtensionContext): string {
   return `${Math.round(usage.percent)}% of ${formatTokens(contextWindow)}`;
 }
 
-function formatGit(state: GitState): string {
+function formatGit(state: GitState, theme: Theme): string {
   if (!state.branch) {
     return "";
   }
-  let branch = state.branch;
+  const branch = theme.fg("accent", `${GIT_BRANCH_ICON} ${state.branch}`);
+  const status: string[] = [];
   if (state.dirty) {
-    branch += "*";
+    status.push("!");
   }
   if (state.ahead > 0) {
-    branch += ` ↑${state.ahead}`;
+    status.push(`↑${state.ahead}`);
   }
   if (state.behind > 0) {
-    branch += ` ↓${state.behind}`;
+    status.push(`↓${state.behind}`);
   }
-  return ` (${branch})`;
+  const suffix =
+    status.length > 0 ? ` ${theme.fg("muted", `[${status.join("")}]`)}` : "";
+  return ` ${branch}${suffix}`;
 }
 
 export class AmpEditor extends CustomEditor {
@@ -133,7 +139,7 @@ export class AmpEditor extends CustomEditor {
     const level = pi.getThinkingLevel();
     const cost = this.options.getCost();
     const path = Paths.abbreviateHome(ctx.sessionManager.getCwd());
-    const git = formatGit(this.options.getGitState());
+    const git = formatGit(this.options.getGitState(), theme);
     const border = (text: string) => this.borderColor(text);
 
     const topLeft = theme.fg("muted", ` ${formatContext(ctx)} `);
@@ -141,7 +147,8 @@ export class AmpEditor extends CustomEditor {
       theme.fg("success", ` ${level} `) + theme.fg("muted", `${model} `);
     const bottomLeft =
       cost > 0 ? theme.fg("muted", ` $${cost.toFixed(2)} `) : "";
-    const bottomRight = theme.fg("muted", ` ${path}${git} `);
+    const bottomRight =
+      theme.fg("muted", ` ${path}`) + git + theme.fg("muted", " ");
 
     lines[0] = fitBorder(topLeft, topRight, width, border);
     lines[lines.length - 1] = fitBorder(bottomLeft, bottomRight, width, border);
