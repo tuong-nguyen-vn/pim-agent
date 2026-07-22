@@ -13,6 +13,7 @@ A Bun-native extension pack for [Pi](https://pi.dev/): web access, subagents, re
 - [Quick Start](#quick-start)
   - [Enabling/Disabling Extensions](#enablingdisabling-extensions)
   - [API Keys (Optional)](#api-keys-optional)
+  - [Pim Configuration](#pim-configuration)
   - [Recommended Pi Settings (Optional)](#recommended-pi-settings-optional)
 - [Why Pim?](#why-pim)
   - [Lean System Prompt](#lean-system-prompt)
@@ -84,6 +85,57 @@ Environment variables override `settings.json` when present:
 ```sh
 EXA_API_KEY='api_key_here' JINA_API_KEY='api_key_here' pim
 ```
+
+### Pim Configuration
+
+Pim-specific settings live in `~/.pim/settings.json`. All fields are optional;
+the example below shows every currently supported setting:
+
+```json
+{
+  "tps": {
+    "enabled": false
+  },
+  "powerline": {
+    "enabled": true
+  },
+  "exa": {
+    "apiKey": ""
+  },
+  "jina": {
+    "apiKey": ""
+  },
+  "painter": {
+    "model": "gpt-image-2"
+  },
+  "viewMedia": {
+    "model": "gemini-3.6-flash"
+  },
+  "agents": {
+    "Oracle": "gpt-5.6-sol",
+    "Search": "gemini-3.6-flash"
+  }
+}
+```
+
+`painter.model` and `viewMedia.model` only select the dedicated model. Pim finds
+that model in `~/.pi/agent/models.json` and uses the provider's `baseUrl`,
+`apiKey`, and `api`. If the model or required provider fields are missing, the
+tool reports which Pi model configuration needs to be added.
+
+For `viewMedia`, the provider's `api` controls the vision request protocol:
+
+| `api` | Endpoint used |
+| --- | --- |
+| `openai-completions` | `<baseUrl>/chat/completions` |
+| `google-generative-ai` | `<baseUrl>/models/<model>:generateContent` |
+| `anthropic-messages` | `<baseUrl>/messages` when `baseUrl` ends in `/v1`, otherwise `<baseUrl>/v1/messages` |
+
+For OpenAI-compatible proxies that serve Gemini or Claude model IDs through
+`/v1/chat/completions`, set the provider's `api` to `openai-completions`; the
+model name does not determine the wire protocol. `painter` requires its model's
+provider to use `openai-completions` for `/images/generations` and
+`/images/edits`.
 
 ### Recommended Pi Settings (Optional)
 

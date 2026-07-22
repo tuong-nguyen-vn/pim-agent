@@ -85,6 +85,14 @@ describe("PimSettings", () => {
     await expect(PimSettings.getJinaApiKey()).resolves.toBe("jina-test");
   });
 
+  test("loads dedicated tool models", async () => {
+    await PimSettings.set("viewMedia", {
+      model: "vision-model",
+    });
+
+    await expect(PimSettings.getViewMediaModel()).resolves.toBe("vision-model");
+  });
+
   test("rejects invalid root setting values", async () => {
     await expect(
       PimSettings.set("exa", { apiKey: 123 } as never)

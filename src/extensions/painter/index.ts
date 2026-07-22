@@ -14,6 +14,7 @@ import {
 import { Tools } from "../../shared/Tools";
 
 const PREVIEW_LINES = 3;
+const REQUEST_TIMEOUT_MS = 120_000;
 
 const IMAGE_EXT: Readonly<Record<string, string>> = {
   png: "image/png",
@@ -63,6 +64,18 @@ function errResult(text: string): AgentToolResult<PainterDetails> {
     content: [{ type: "text", text }],
     details: { isError: true },
   };
+}
+
+function requestSignal(signal: AbortSignal | undefined): AbortSignal {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
+function requestError(error: unknown): string {
+  if (error instanceof DOMException && error.name === "TimeoutError") {
+    return `request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`;
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 function renderTitle(
@@ -211,6 +224,11 @@ export default function (pi: ExtensionAPI): void {
             `Set painter.model in ~/.pim/settings.json to an available model.`
         );
       }
+      if (provider.api !== "openai-completions") {
+        return errResult(
+          `painter: model "${model}" must use api "openai-completions" in ~/.pi/agent/models.json.`
+        );
+      }
 
       const prompt = String(args.prompt ?? "").trim();
       if (!prompt) {
@@ -238,6 +256,7 @@ export default function (pi: ExtensionAPI): void {
       if (signal?.aborted) {
         throw new Error("painter aborted before execution.");
       }
+      const activeSignal = requestSignal(signal);
 
       let json: unknown;
       try {
@@ -251,7 +270,7 @@ export default function (pi: ExtensionAPI): void {
                 inputs,
                 size,
                 quality,
-                signal
+                activeSignal
               )
             : await callGenerate(
                 provider.baseUrl,
@@ -260,11 +279,10 @@ export default function (pi: ExtensionAPI): void {
                 prompt,
                 size,
                 quality,
-                signal
+                activeSignal
               );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return errResult(`painter: ${msg}`);
+        return errResult(`painter: ${requestError(err)}`);
       }
 
       const item = (
@@ -281,7 +299,7 @@ export default function (pi: ExtensionAPI): void {
       if (b64) {
         bytes = Buffer.from(b64, "base64");
       } else if (item.url) {
-        const r = await fetch(item.url, { signal });
+        const r = await fetch(item.url, { signal: activeSignal });
         if (!r.ok) {
           return errResult(
             `painter: download generated image failed (${r.status})`

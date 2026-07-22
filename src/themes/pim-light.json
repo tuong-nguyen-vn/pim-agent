@@ -35,8 +35,8 @@
     "thinkingText": "gray",
 
     "selectedBg": "panelBg",
-    "userMessageBg": "panelBg",
-    "userMessageText": "",
+    "userMessageBg": "",
+    "userMessageText": "#1f2328",
     "customMessageBg": "panelBg",
     "customMessageText": "",
     "customMessageLabel": "magenta",

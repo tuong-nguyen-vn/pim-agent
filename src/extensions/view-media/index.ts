@@ -3,6 +3,7 @@ import type {
   ExtensionAPI,
   Theme,
 } from "@earendil-works/pi-coding-agent";
+import type { Api } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { ModelResolver } from "../../shared/ModelResolver";
 import { Paths } from "../../shared/Paths";
@@ -94,6 +95,7 @@ function renderTitle(
 async function describeWithVision(
   base: string,
   key: string,
+  api: Api,
   model: string,
   base64: string,
   mimeType: string,
@@ -103,6 +105,34 @@ async function describeWithVision(
   const prompt =
     question?.trim() ||
     "Describe this image concisely: key objects, text (OCR), colors, layout. Be factual and specific.";
+
+  if (api === "google-generative-ai") {
+    return await describeWithGoogle(
+      base,
+      key,
+      model,
+      base64,
+      mimeType,
+      prompt,
+      signal
+    );
+  }
+  if (api === "anthropic-messages") {
+    return await describeWithAnthropic(
+      base,
+      key,
+      model,
+      base64,
+      mimeType,
+      prompt,
+      signal
+    );
+  }
+  if (api !== "openai-completions") {
+    throw new Error(
+      `view_media: unsupported API protocol "${api}" for vision fallback`
+    );
+  }
 
   const resp = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -131,7 +161,9 @@ async function describeWithVision(
 
   if (!resp.ok) {
     const detail = await resp.text().catch(() => "");
-    throw new Error(`vision fallback ${resp.status}: ${detail.slice(0, 300)}`);
+    throw new Error(
+      `vision fallback model "${model}" at ${base}/chat/completions returned ${resp.status}: ${detail.slice(0, 300)}`
+    );
   }
 
   const data = (await resp.json()) as {
@@ -149,6 +181,106 @@ async function describeWithVision(
         .join("\n")
         .trim()
     : (typeof content === "string" ? content : "").trim();
+  return { description, model };
+}
+
+async function describeWithGoogle(
+  base: string,
+  key: string,
+  model: string,
+  base64: string,
+  mimeType: string,
+  prompt: string,
+  signal: AbortSignal | undefined
+): Promise<{ description: string; model: string }> {
+  const endpoint = `${base}/models/${encodeURIComponent(model)}:generateContent`;
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    signal,
+    headers: {
+      "content-type": "application/json",
+      "x-goog-api-key": key,
+      authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }, { inlineData: { mimeType, data: base64 } }],
+        },
+      ],
+      generationConfig: { maxOutputTokens: 1024 },
+    }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => "");
+    throw new Error(
+      `vision fallback model "${model}" at ${endpoint} returned ${resp.status}: ${detail.slice(0, 300)}`
+    );
+  }
+  const data = (await resp.json()) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+    }>;
+  };
+  const description = (data.candidates?.[0]?.content?.parts ?? [])
+    .map((part) => part.text ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+  return { description, model };
+}
+
+async function describeWithAnthropic(
+  base: string,
+  key: string,
+  model: string,
+  base64: string,
+  mimeType: string,
+  prompt: string,
+  signal: AbortSignal | undefined
+): Promise<{ description: string; model: string }> {
+  const endpoint = `${base.endsWith("/v1") ? base : `${base}/v1`}/messages`;
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    signal,
+    headers: {
+      "content-type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "x-api-key": key,
+      authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: mimeType, data: base64 },
+            },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => "");
+    throw new Error(
+      `vision fallback model "${model}" at ${endpoint} returned ${resp.status}: ${detail.slice(0, 300)}`
+    );
+  }
+  const data = (await resp.json()) as {
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  const description = (data.content ?? [])
+    .map((part) => part.text ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
   return { description, model };
 }
 
@@ -233,11 +365,24 @@ export default function (pi: ExtensionAPI): void {
           details: { isError: true, mimeType, bytes: buffer.length },
         };
       }
+      if (!provider.api) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `view_media: provider "${provider.providerName}" for model "${model}" is missing \`api\` in ~/.pi/agent/models.json. Set it to openai-completions, google-generative-ai, or anthropic-messages.`,
+            },
+            imageBlock,
+          ],
+          details: { isError: true, mimeType, bytes: buffer.length },
+        };
+      }
 
       try {
         const { description, model: visionModel } = await describeWithVision(
           provider.baseUrl,
           provider.apiKey,
+          provider.api,
           model,
           base64,
           mimeType,

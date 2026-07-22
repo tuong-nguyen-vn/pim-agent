@@ -1,16 +1,22 @@
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import type { Api } from "@earendil-works/pi-ai";
 import { join } from "node:path";
 
 export type ResolvedProvider = {
   readonly baseUrl: string;
   readonly apiKey: string;
   readonly providerName: string;
+  readonly api?: Api;
 };
 
 type ProviderEntry = {
   readonly baseUrl: string;
   readonly apiKey: string;
-  readonly models?: ReadonlyArray<{ readonly id: string }>;
+  readonly api?: Api;
+  readonly models?: ReadonlyArray<{
+    readonly id: string;
+    readonly api?: Api;
+  }>;
 };
 
 type ModelsConfig = {
@@ -26,11 +32,13 @@ export class ModelResolver {
       return undefined;
     }
     for (const [name, provider] of Object.entries(config.providers)) {
-      if (provider.models?.some((m) => m.id === modelId)) {
+      const model = provider.models?.find((entry) => entry.id === modelId);
+      if (model) {
         return {
           baseUrl: provider.baseUrl,
           apiKey: provider.apiKey,
           providerName: name,
+          api: model.api ?? provider.api,
         };
       }
     }

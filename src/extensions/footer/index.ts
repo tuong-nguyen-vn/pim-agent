@@ -6,10 +6,12 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import { PimSettings } from "../../shared/PimSettings";
+import { AmpEditor } from "./AmpEditor";
 import { EMPTY_GIT, fetchGitStatus, type GitState, watchGitDir } from "./git";
 import { renderFooterLine } from "./segments";
 
 let activeGitRefresh: (() => void) | null = null;
+let activeChromeCleanup: (() => void) | null = null;
 
 type FooterTui = Pick<TUI, "requestRender">;
 type FooterData = Pick<ReadonlyFooterDataProvider, "onBranchChange">;
@@ -102,13 +104,47 @@ export function createFooterWidget(
   };
 }
 
-function installFooter(ctx: ExtensionContext): void {
+function installAmpChrome(pi: ExtensionAPI, ctx: ExtensionContext): void {
   if (!ctx.hasUI) {
     return;
   }
-  ctx.ui.setFooter((tui, _theme, footerData) => {
-    return createFooterWidget(ctx, tui, footerData);
+  activeChromeCleanup?.();
+
+  let gitState = EMPTY_GIT;
+  let activeTui: TUI | undefined;
+  const refresh = async (): Promise<void> => {
+    const next = await fetchGitStatus(ctx.cwd);
+    gitState = next;
+    activeTui?.requestRender();
+  };
+  const disposeGitWatch = watchGitDir(ctx.cwd, () => {
+    void refresh();
   });
+  activeGitRefresh = () => {
+    void refresh();
+  };
+  void refresh();
+
+  ctx.ui.setFooter(() => ({
+    render: () => [],
+    invalidate() {},
+  }));
+  ctx.ui.setEditorComponent((tui, theme, keybindings) => {
+    activeTui = tui;
+    return new AmpEditor(tui, theme, keybindings, {
+      pi,
+      ctx,
+      getGitState: () => gitState,
+      getCost: () => getTotalCost(ctx),
+    });
+  });
+
+  activeChromeCleanup = () => {
+    disposeGitWatch();
+    activeGitRefresh = null;
+    activeTui = undefined;
+    activeChromeCleanup = null;
+  };
 }
 
 export default function (pi: ExtensionAPI): void {
@@ -118,9 +154,11 @@ export default function (pi: ExtensionAPI): void {
     }
     const { enabled } = await PimSettings.get("powerline");
     if (enabled) {
-      installFooter(ctx);
+      installAmpChrome(pi, ctx);
     } else {
+      activeChromeCleanup?.();
       ctx.ui.setFooter(undefined);
+      ctx.ui.setEditorComponent(undefined);
     }
   };
 
@@ -144,5 +182,9 @@ export default function (pi: ExtensionAPI): void {
 
   pi.on("tool_execution_end", () => {
     activeGitRefresh?.();
+  });
+
+  pi.on("session_shutdown", () => {
+    activeChromeCleanup?.();
   });
 }
