@@ -223,6 +223,9 @@ export class Renderer {
     readonly theme: Theme;
     readonly context: StatefulToolCallTitleContext;
     readonly labelColor?: ThemeColor;
+    readonly markerGlyph?: string;
+    readonly separator?: string;
+    readonly pad?: boolean;
   }): Component {
     const state = args.context.state as StatefulToolCallTitleState;
     const component = Renderer.renderToolCallTitle({
@@ -265,6 +268,7 @@ export class Renderer {
     readonly theme: Theme;
     readonly context: RenderContext;
     readonly previewLines: number;
+    readonly prefix?: PrefixSpec;
   }): Container {
     const { result, options, theme, context, previewLines } = args;
     const container =
@@ -289,7 +293,7 @@ export class Renderer {
       Renderer.makePrefixedBlock({
         text,
         theme,
-        prefix: Renderer.GAPPED_PREFIX,
+        prefix: args.prefix ?? Renderer.GAPPED_PREFIX,
         lineColor,
       });
 

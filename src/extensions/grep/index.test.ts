@@ -64,5 +64,40 @@ describe("grep tool renderer", () => {
     );
 
     expect(callComponent.render(120).join("\n")).toContain("(2 files)");
+    expect(callComponent.render(120).join("\n")).toContain("✓ Grep ");
+    expect(callComponent.render(120).join("\n")).not.toContain("Grep:");
+  });
+
+  test("renders errors with a cross and an unbordered aligned body", () => {
+    const tool = registeredTool();
+    const args = { pattern: "alpha" };
+    const state = {};
+    const context = {
+      args,
+      toolCallId: "grep-error",
+      invalidate: () => {},
+      lastComponent: undefined,
+      state,
+      cwd: "/repo",
+      executionStarted: true,
+      argsComplete: true,
+      isPartial: false,
+      expanded: false,
+      showImages: true,
+      isError: true,
+    };
+    const callComponent = tool.renderCall!(args, stubTheme, context);
+    const resultComponent = tool.renderResult!(
+      {
+        content: [{ type: "text", text: "validation failed" }],
+        details: undefined,
+      },
+      { expanded: false, isPartial: false },
+      stubTheme,
+      context
+    );
+
+    expect(callComponent.render(120).join("\n")).toContain("✗ Grep ");
+    expect(resultComponent.render(120)).toEqual(["   validation failed"]);
   });
 });

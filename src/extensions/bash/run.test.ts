@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SpillCache } from "../../shared/SpillCache";
@@ -92,7 +92,7 @@ describe("runBashCommand (integration)", () => {
   test("respects cwd", async () => {
     const r = await runBashCommand("pwd", 5000, undefined, "/tmp");
     expect(r.exitCode).toBe(0);
-    expect(r.stdout.text.trim()).toBe("/tmp");
+    expect(r.stdout.text.trim()).toBe(await realpath("/tmp"));
   });
 
   test("times out and reports timedOut", async () => {
@@ -162,27 +162,30 @@ describe("runBashCommand (integration)", () => {
     }
   });
 
-  test("bounded drain returns even when a daemon escapes our process group", async () => {
-    // A child that calls setsid itself leaves our pgid and survives killGroup.
-    // If it keeps the pipe open, drain would block forever; the DRAIN_GRACE_MS
-    // bound forces us to return anyway. The marker lets us clean up after.
-    const marker = `pim-test-detached-${Date.now()}`;
-    const startedAt = Date.now();
-    const r = await runBashCommand(
-      `setsid bash -c 'sleep 60; echo ${marker}' > /tmp/${marker}.out 2>&1 < /dev/null & disown; echo done`,
-      5000,
-      undefined,
-      process.cwd()
-    );
-    const elapsed = Date.now() - startedAt;
-    expect(r.exitCode).toBe(0);
-    expect(r.stdout.text.trim()).toBe("done");
-    expect(elapsed).toBeLessThan(DRAIN_GRACE_MS + 2000);
-    try {
-      Bun.spawnSync({ cmd: ["pkill", "-f", marker] });
-      Bun.spawnSync({ cmd: ["rm", "-f", `/tmp/${marker}.out`] });
-    } catch {}
-  });
+  test.skipIf(process.platform !== "linux")(
+    "bounded drain returns even when a daemon escapes our process group",
+    async () => {
+      // A child that calls setsid itself leaves our pgid and survives killGroup.
+      // If it keeps the pipe open, drain would block forever; the DRAIN_GRACE_MS
+      // bound forces us to return anyway. The marker lets us clean up after.
+      const marker = `pim-test-detached-${Date.now()}`;
+      const startedAt = Date.now();
+      const r = await runBashCommand(
+        `setsid bash -c 'sleep 60; echo ${marker}' > /tmp/${marker}.out 2>&1 < /dev/null & disown; echo done`,
+        5000,
+        undefined,
+        process.cwd()
+      );
+      const elapsed = Date.now() - startedAt;
+      expect(r.exitCode).toBe(0);
+      expect(r.stdout.text.trim()).toBe("done");
+      expect(elapsed).toBeLessThan(DRAIN_GRACE_MS + 2000);
+      try {
+        Bun.spawnSync({ cmd: ["pkill", "-f", marker] });
+        Bun.spawnSync({ cmd: ["rm", "-f", `/tmp/${marker}.out`] });
+      } catch {}
+    }
+  );
 
   test("killAllActiveBashGroups sweeps in-flight subtrees", async () => {
     const id = Date.now();

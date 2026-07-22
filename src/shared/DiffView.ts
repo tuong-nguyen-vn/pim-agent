@@ -52,7 +52,7 @@ export class DiffView {
       parts.push(theme.fg("toolDiffRemoved", `-${stats.removed}`));
     }
 
-    return parts.join("/");
+    return parts.join(" ");
   }
 
   public static buildTitle(args: {
@@ -133,7 +133,9 @@ export class DiffView {
       return body;
     }
 
-    return [theme.fg("muted", " ⋯"), ...lines.slice(-previewLines)].join("\n");
+    return [theme.fg("muted", "   ⋯"), ...lines.slice(-previewLines)].join(
+      "\n"
+    );
   }
 
   public static renderDiffCall(args: {

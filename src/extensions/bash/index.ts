@@ -1,5 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Renderer } from "../../shared/Renderer";
+import {
+  Renderer,
+  type StatefulToolCallTitleContext,
+} from "../../shared/Renderer";
 import { SpillCache } from "../../shared/SpillCache";
 import { Tools } from "../../shared/Tools";
 import { detailsOf, formatResult, isErrorResult } from "./format";
@@ -7,6 +10,28 @@ import { killAllActiveBashGroups, runBashCommand } from "./run";
 import { type BashInput, bashSchema, DEFAULT_TIMEOUT_MS } from "./schema";
 
 const PREVIEW_LINES = 5;
+
+type BashRenderContext = StatefulToolCallTitleContext & {
+  readonly args?: Partial<BashInput>;
+};
+
+function renderTitle(
+  args: Partial<BashInput> | undefined,
+  theme: Parameters<typeof Renderer.renderStatefulToolCallTitle>[0]["theme"],
+  context: BashRenderContext
+) {
+  const command =
+    typeof args?.command === "string" && args.command ? args.command : "...";
+  return Renderer.renderStatefulToolCallTitle({
+    label: "",
+    title: command,
+    theme,
+    context,
+    markerGlyph: "$",
+    separator: "",
+    pad: false,
+  });
+}
 
 let lifecycleHandlersInstalled = false;
 
@@ -17,7 +42,7 @@ function installLifecycleHandlers(): void {
   lifecycleHandlersInstalled = true;
 
   // Sweep bash subtrees that escaped our process group (double-forked
-  // daemons via their own setsid) or that the parent harness is about to
+  // daemons in their own session) or that the parent harness is about to
   // strand by signalling us. Re-raise the signal so the default handler
   // still runs.
   for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"] as const) {
@@ -62,24 +87,21 @@ export default function (pi: ExtensionAPI): void {
       };
     },
     renderCall(args, theme, context) {
-      const cmd =
-        typeof args?.command === "string" && args.command
-          ? args.command
-          : "...";
-      return Renderer.renderToolCallTitle({
-        label: "Bash",
-        title: cmd,
+      return renderTitle(
+        args as Partial<BashInput> | undefined,
         theme,
-        context,
-      });
+        context
+      );
     },
     renderResult(result, options, theme, context) {
+      renderTitle(context.args, theme, context);
       return Renderer.renderBorderedResult({
         result,
         options,
         theme,
         context,
         previewLines: PREVIEW_LINES,
+        prefix: { prefix: "   ", width: 3 },
       });
     },
   });

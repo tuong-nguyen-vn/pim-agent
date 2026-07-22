@@ -10,7 +10,7 @@ type Reader = ReadableStreamDefaultReader<Uint8Array>;
 
 const activePids = new Set<number>();
 
-// Wired into the extension's signal handlers so a daemon that `setsid`s
+// Wired into the extension's signal handlers so a daemon that detaches
 // out of our group (or harbor/parent SIGTERM) still tears down its subtree.
 export function killAllActiveBashGroups(sig: NodeJS.Signals = "SIGTERM"): void {
   for (const pid of activePids) {
@@ -81,15 +81,16 @@ export async function runBashCommand(
   const stdoutCap = new StreamCapture();
   const stderrCap = new StreamCapture();
 
-  // setsid puts bash and its descendants into a fresh process group with
-  // pgid == proc.pid, so we can signal the whole tree on timeout/abort
-  // instead of leaving backgrounded grandchildren alive holding our pipes.
+  // Bun's detached mode creates a fresh session/process group on POSIX,
+  // equivalent to setsid(2), without depending on the Linux-only `setsid`
+  // executable. pgid == proc.pid, so timeout/abort can signal the whole tree.
   const proc = Bun.spawn({
-    cmd: ["setsid", "bash", "-lc", command],
+    cmd: ["bash", "-lc", command],
     cwd,
     stdout: "pipe",
     stderr: "pipe",
     env: { ...process.env },
+    detached: true,
   });
   if (proc.pid !== undefined) {
     activePids.add(proc.pid);

@@ -35,11 +35,17 @@ export function renderCall(
   theme: Theme,
   context: RenderContext
 ): Component {
+  const markerColor = Renderer.markerColorFor(
+    Boolean(context.isPartial),
+    Boolean(context.isError)
+  );
   return Renderer.renderToolCallTitle({
     label: "Todo",
     title: formatCallTitle(args?.todos ?? []),
     theme,
     context,
+    markerGlyph: Renderer.markerGlyphFor(markerColor),
+    separator: " ",
   });
 }
 

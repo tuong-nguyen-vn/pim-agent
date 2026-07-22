@@ -45,6 +45,16 @@ describe("todo render", () => {
     )[0];
     expect(rendered).toContain("**Todo**");
     expect(rendered).toContain("1 done, 2 pending, 1 cancelled");
+    expect(rendered).toContain("✓");
+  });
+
+  test("renderCall shows a cross for errors", () => {
+    const rendered = renderCall({ todos: items }, stubTheme, {
+      ...context,
+      isError: true,
+    }).render(120)[0];
+
+    expect(rendered).toContain("✗");
   });
 
   test("renderCall shows cleared when the todo list is empty", () => {
@@ -54,7 +64,8 @@ describe("todo render", () => {
     )[0];
 
     expect(rendered).toContain("**Todo**");
-    expect(rendered).toContain(": cleared");
+    expect(rendered).toContain(" cleared");
+    expect(rendered).not.toContain(": cleared");
   });
 
   test("renderResult is hidden so the widget is the only TUI checklist", () => {

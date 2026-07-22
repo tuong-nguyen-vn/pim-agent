@@ -84,7 +84,7 @@ describe("DiffView.buildBlock (collapsed diff preview)", () => {
     });
 
     const lines = container.render(200);
-    expect(lines.some((l) => l.includes("⋯"))).toBe(true);
+    expect(lines.some((l) => l.includes("   ⋯"))).toBe(true);
     expect(lines.some((l) => /\bline 1\b/.test(l))).toBe(false);
     expect(lines.some((l) => l.includes("line 11"))).toBe(true);
     expect(lines.some((l) => l.includes("line 30"))).toBe(true);
@@ -107,9 +107,9 @@ describe("DiffView.buildBlock (collapsed diff preview)", () => {
 });
 
 describe("DiffView.formatStats", () => {
-  test("emits both segments separated by a slash", () => {
+  test("emits both segments separated by a space", () => {
     expect(DiffView.formatStats({ added: 5, removed: 2 }, stubTheme)).toBe(
-      "<toolDiffAdded>+5</toolDiffAdded>/<toolDiffRemoved>-2</toolDiffRemoved>"
+      "<toolDiffAdded>+5</toolDiffAdded> <toolDiffRemoved>-2</toolDiffRemoved>"
     );
   });
 

@@ -39,11 +39,17 @@ function renderTitle(
     cwd: context.cwd,
     fileCount: state.fileCount,
   });
+  const markerColor = Renderer.markerColorFor(
+    Boolean(context.isPartial),
+    Boolean(context.isError)
+  );
   return Renderer.renderStatefulToolCallTitle({
     label: "Glob",
     title,
     theme,
     context,
+    markerGlyph: Renderer.markerGlyphFor(markerColor),
+    separator: " ",
   });
 }
 
@@ -123,8 +129,8 @@ export default function (pi: ExtensionAPI): void {
 
       if (details?.fileCount !== undefined) {
         state.fileCount = details.fileCount;
-        renderTitle(context.args ?? {}, theme, context);
       }
+      renderTitle(context.args ?? {}, theme, context);
 
       return Renderer.renderBorderedResult({
         result,
@@ -132,6 +138,7 @@ export default function (pi: ExtensionAPI): void {
         theme,
         context,
         previewLines: PREVIEW_LINES,
+        prefix: { prefix: "   ", width: 3 },
       });
     },
   });

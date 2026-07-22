@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { type DiffRenderState, DiffView } from "../../shared/DiffView";
 import { Paths } from "../../shared/Paths";
+import { Renderer } from "../../shared/Renderer";
 import { Tools } from "../../shared/Tools";
 import { editFile, formatEditSummary } from "./edit";
 import { type EditInput, editSchema } from "./schema";
@@ -40,6 +41,11 @@ export default function (pi: ExtensionAPI): void {
         rawPath,
         theme,
         context: context as typeof context & { state: DiffRenderState },
+        separator: " ",
+        markerGlyph: Renderer.markerGlyphFor,
+        link: true,
+        clickableLink: false,
+        padTitle: false,
       });
     },
     renderResult(result, options, theme, context) {
@@ -51,6 +57,8 @@ export default function (pi: ExtensionAPI): void {
         context: context as typeof context & { state: DiffRenderState },
         previewLines: ERROR_PREVIEW_LINES,
         diffPreviewLines: DIFF_PREVIEW_LINES,
+        separator: " ",
+        markerGlyph: Renderer.markerGlyphFor,
       });
     },
   });
