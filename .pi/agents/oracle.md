@@ -2,7 +2,7 @@
 name: Oracle
 description: Expert AI advisor with advanced reasoning for code reviews, architecture, planning, and deep technical guidance. Invoke as a subagent when the main agent needs a smarter, more capable model for complex reasoning or analysis.
 tools: grep, find, read
-model: hd-openai/gpt-5.6-sol
+model: gpt-5.6-sol
 ---
 
 You are the Oracle — an expert AI advisor with advanced reasoning capabilities.
