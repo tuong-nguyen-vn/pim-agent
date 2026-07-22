@@ -113,6 +113,43 @@ describe("Renderer.renderBorderedResult", () => {
       " │   src/file.ts:12:after",
     ]);
   });
+
+  test("can show a truncated successful preview while collapsed", () => {
+    const component = Renderer.renderBorderedResult({
+      result: textResult("one\ntwo\nthree\nfour"),
+      options: { expanded: false, isPartial: false },
+      theme: stubTheme,
+      context: rendererContext,
+      previewLines: 2,
+      prefix: { prefix: "   ", width: 3 },
+      showCollapsedSuccess: true,
+    });
+
+    expect(component.render(80)).toEqual([
+      "   one",
+      "   two",
+      "   … 2 more lines",
+    ]);
+  });
+
+  test("can show the last lines with the truncation marker first", () => {
+    const component = Renderer.renderBorderedResult({
+      result: textResult("one\ntwo\nthree\nfour"),
+      options: { expanded: false, isPartial: false },
+      theme: stubTheme,
+      context: rendererContext,
+      previewLines: 2,
+      prefix: { prefix: "   ", width: 3 },
+      showCollapsedSuccess: true,
+      previewFromEnd: true,
+    });
+
+    expect(component.render(80)).toEqual([
+      "   … 2 more lines",
+      "   three",
+      "   four",
+    ]);
+  });
 });
 
 describe("Renderer.renderToolCallTitle", () => {

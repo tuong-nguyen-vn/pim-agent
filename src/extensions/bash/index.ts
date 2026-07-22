@@ -1,4 +1,7 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentToolResult,
+  ExtensionAPI,
+} from "@earendil-works/pi-coding-agent";
 import {
   Renderer,
   type StatefulToolCallTitleContext,
@@ -31,6 +34,33 @@ function renderTitle(
     separator: "",
     pad: false,
   });
+}
+
+function previewResult(
+  result: AgentToolResult<unknown>,
+  isError: boolean
+): AgentToolResult<unknown> {
+  if (isError) {
+    return result;
+  }
+
+  const first = result.content?.[0];
+  if (!first || !("text" in first)) {
+    return result;
+  }
+
+  const lines = (first.text ?? "").split("\n");
+  if (lines[0] === "Exit code: 0") {
+    lines.shift();
+  }
+  if (lines[0] === "stdout:" || lines[0] === "stderr:") {
+    lines.shift();
+  }
+
+  return {
+    ...result,
+    content: [{ type: "text", text: lines.join("\n") }],
+  };
 }
 
 let lifecycleHandlersInstalled = false;
@@ -96,12 +126,14 @@ export default function (pi: ExtensionAPI): void {
     renderResult(result, options, theme, context) {
       renderTitle(context.args, theme, context);
       return Renderer.renderBorderedResult({
-        result,
+        result: previewResult(result, context.isError),
         options,
         theme,
         context,
         previewLines: PREVIEW_LINES,
         prefix: { prefix: "   ", width: 3 },
+        showCollapsedSuccess: true,
+        previewFromEnd: true,
       });
     },
   });

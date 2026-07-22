@@ -269,6 +269,8 @@ export class Renderer {
     readonly context: RenderContext;
     readonly previewLines: number;
     readonly prefix?: PrefixSpec;
+    readonly showCollapsedSuccess?: boolean;
+    readonly previewFromEnd?: boolean;
   }): Container {
     const { result, options, theme, context, previewLines } = args;
     const container =
@@ -278,7 +280,7 @@ export class Renderer {
     if (options.isPartial) {
       return container;
     }
-    if (!context.isError && !options.expanded) {
+    if (!context.isError && !options.expanded && !args.showCollapsedSuccess) {
       return container;
     }
 
@@ -300,14 +302,18 @@ export class Renderer {
     if (options.expanded) {
       container.addChild(block(body));
     } else {
-      const { preview, overflow } = Renderer.buildPreviewLines(
-        body,
-        previewLines
-      );
+      const lines = body.split("\n");
+      const overflow = Math.max(0, lines.length - previewLines);
+      const preview = args.previewFromEnd
+        ? lines.slice(-previewLines).join("\n")
+        : lines.slice(0, previewLines).join("\n");
+      if (overflow > 0 && args.previewFromEnd) {
+        container.addChild(block(`… ${overflow} more lines`));
+      }
       if (preview) {
         container.addChild(block(preview));
       }
-      if (overflow > 0) {
+      if (overflow > 0 && !args.previewFromEnd) {
         container.addChild(block(`… ${overflow} more lines`));
       }
     }
