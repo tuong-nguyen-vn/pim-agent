@@ -11,7 +11,6 @@ const shortcuts = [
   ["/<command>", "Slash commands", "<command>"],
   ["/hotkeys", "Show all keyboard shortcuts"],
   ["/settings", "Open settings menu"],
-  ["/powerline", "Toggle Pim powerline footer"],
   ["@<path>", "Attach files", "<path>"],
   ["!<command>", "Run bash command", "<command>"],
   ["!!<command>", "Run bash command (excluded from context)", "<command>"],
@@ -58,7 +57,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     };
 
     const title =
-      theme.bold(theme.fg("accent", "PIM - Pi IMproved")) +
+      theme.bold(theme.fg("accent", "AMP - Pi Improved")) +
       " " +
       theme.italic(theme.fg("muted", `v${version}`));
     ctx.ui.setWidget(SPLASH_ID, [

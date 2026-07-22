@@ -162,20 +162,6 @@ export default function (pi: ExtensionAPI): void {
     }
   };
 
-  pi.registerCommand("powerline", {
-    description: "Toggle Pim powerline footer",
-    handler: async (_args, ctx) => {
-      const current = await PimSettings.get("powerline");
-      const next = { ...current, enabled: !current.enabled };
-      await PimSettings.set("powerline", next);
-      await apply(ctx);
-      ctx.ui.notify(
-        `Pim powerline footer ${next.enabled ? "enabled" : "disabled"}`,
-        "info"
-      );
-    },
-  });
-
   pi.on("session_start", async (_event, ctx) => {
     await apply(ctx);
   });

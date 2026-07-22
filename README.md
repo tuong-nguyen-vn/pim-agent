@@ -58,7 +58,7 @@ PIM_PI_CLI=/path/to/pi/dist/cli.js pim
 
 Pim ships a collection of extensions which are all enabled by default. To disable specific ones that don't suit your needs, run `pim config` and toggle them there.
 
-Some Pim extensions can be toggled directly within the TUI as well: `/powerline` for the Git-aware powerline footer, `/tps` for inference speed reporting.
+Some Pim extensions can be toggled directly within the TUI as well: `/tps` for inference speed reporting.
 
 ### API Keys (Optional)
 
@@ -227,7 +227,7 @@ Pim also ships with quality of life improvements for the TUI:
 
 - **ANSI-compatible themes** - `pim-light` and `pim-dark` themes which adapt to your terminal's colour scheme
 - **fzf-style autocomplete** - `@path` file picker and `/command` picker with fuzzy search
-- **Git-aware powerline footer** - cwd, git branch and states, context usage, model and session cost (toggle with `/powerline`)
+- **Git-aware powerline footer** - cwd, git branch and states, context usage, model and session cost
 - **TPS reporting** - per-cycle decode/prefill rate, TTFT, and cache read tokens (toggle with `/tps`)
 - **Concise tool UI** - minimal one-liner title across all tool calls, `Ctrl+O` to toggle full details
 
