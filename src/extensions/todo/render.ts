@@ -20,6 +20,7 @@ type RenderContext = {
   readonly lastComponent: Component | undefined;
   readonly isPartial: boolean;
   readonly isError: boolean;
+  readonly invalidate?: () => void;
 };
 
 class HiddenTodoToolRender implements Component {
@@ -46,6 +47,7 @@ export function renderCall(
     context,
     markerGlyph: Renderer.markerGlyphFor(markerColor),
     separator: " ",
+    useSpinner: true,
   });
 }
 

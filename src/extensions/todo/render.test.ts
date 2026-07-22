@@ -57,6 +57,25 @@ describe("todo render", () => {
     expect(rendered).toContain("✗");
   });
 
+  test("renderCall uses spinner when isPartial is true and invalidate is provided", () => {
+    const invalidate = () => {};
+    const partialContext = {
+      ...context,
+      isPartial: true,
+      invalidate,
+    };
+
+    const component = renderCall({ todos: items }, stubTheme, partialContext);
+    expect(component.render(120)[0]).toContain("⣿");
+
+    renderCall({ todos: items }, stubTheme, {
+      ...context,
+      lastComponent: component,
+      invalidate,
+    });
+    expect(component.render(120)[0]).toContain("✓");
+  });
+
   test("renderCall shows cleared when the todo list is empty", () => {
     expect(formatCallTitle([])).toBe("cleared");
     const rendered = renderCall({ todos: [] }, stubTheme, context).render(

@@ -215,4 +215,41 @@ describe("DiffView.renderDiffCall with write's opt-in styling", () => {
     expect(line).not.toContain("\x1b]8;;");
     expect(line.endsWith(" ")).toBe(false);
   });
+
+  test("uses spinner when isPartial is true and invalidate is provided", () => {
+    const invalidate = () => {};
+    const partialContext = {
+      ...callContext(),
+      isPartial: true,
+      invalidate,
+    };
+
+    const component = DiffView.renderDiffCall({
+      label: "Create",
+      rawPath: "/work/repo/src/foo.ts",
+      theme: stubTheme,
+      context: partialContext,
+      markerGlyph: Renderer.markerGlyphFor,
+      link: true,
+    });
+
+    expect(component.render(80)[0]).toContain("⣿");
+
+    DiffView.renderDiffResult({
+      label: "Create",
+      result: { content: [{ type: "text", text: "done" }], details: {} },
+      options: { expanded: false, isPartial: false },
+      theme: stubTheme,
+      context: {
+        state: partialContext.state,
+        isError: false,
+        lastComponent: undefined,
+        invalidate,
+      },
+      previewLines: 5,
+      diffPreviewLines: 20,
+      markerGlyph: Renderer.markerGlyphFor,
+    });
+    expect(component.render(80)[0]).toContain("✓");
+  });
 });
