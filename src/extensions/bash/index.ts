@@ -33,6 +33,7 @@ function renderTitle(
     markerGlyph: "$",
     separator: "",
     pad: false,
+    useSpinner: true,
   });
 }
 
