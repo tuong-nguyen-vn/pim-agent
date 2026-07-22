@@ -24,7 +24,7 @@ type RenderToken = (
   styleContext?: unknown
 ) => string[];
 
-type MarkdownConstructor = {
+type MarkdownConstructor = Function & {
   readonly prototype: MarkdownRenderPrototype;
 };
 
@@ -88,10 +88,10 @@ function patchMarkdown(Markdown: MarkdownConstructor): boolean {
   prototype[PATCH_STATE] = true;
 
   prototype.renderToken = function (
-    token,
-    width,
-    nextTokenType,
-    styleContext
+    token: CodeToken,
+    width: number,
+    nextTokenType?: string,
+    styleContext?: unknown
   ): string[] {
     if (token.type === "code") {
       return renderAmpCodeBlock(getMarkdownTheme(this), token, nextTokenType);
@@ -125,16 +125,28 @@ function processEntryPoints(): string[] {
   return entries;
 }
 
-function resolvePiTuiFromEntry(entry: string): string | undefined {
+/**
+ * Find every pi-tui installation reachable from an entry point.
+ *
+ * Do not stop at Node's first resolution result: amp-pi can have both a
+ * top-level pi-tui and a copy nested under pi-coding-agent. Depending on how
+ * Pi was installed, extensions and the interactive UI may use different
+ * copies, so both Markdown prototypes must be patched.
+ */
+export function resolvePiTuiPathsFromEntry(entry: string): string[] {
+  const paths = new Set<string>();
+
   try {
-    return createRequire(entry).resolve("@earendil-works/pi-tui");
+    paths.add(createRequire(entry).resolve("@earendil-works/pi-tui"));
   } catch {
-    // Fall through to manual walk — some entry shims are not valid require roots.
+    // Continue with the manual walk — some entry shims are not valid require roots.
   }
 
-  // Walk up from the CLI file looking for a nested pi-tui install.
+  // Walk all the way up from the CLI file. This discovers both nested and
+  // hoisted installs instead of returning only whichever one require.resolve
+  // happens to select first.
   let dir = dirname(entry);
-  for (let i = 0; i < 8; i++) {
+  while (true) {
     const candidate = join(
       dir,
       "node_modules",
@@ -144,7 +156,7 @@ function resolvePiTuiFromEntry(entry: string): string | undefined {
       "index.js"
     );
     if (existsSync(candidate)) {
-      return candidate;
+      paths.add(candidate);
     }
     const parent = dirname(dir);
     if (parent === dir) {
@@ -152,7 +164,8 @@ function resolvePiTuiFromEntry(entry: string): string | undefined {
     }
     dir = parent;
   }
-  return undefined;
+
+  return [...paths];
 }
 
 /**
@@ -175,17 +188,15 @@ export async function resolveMarkdownConstructors(): Promise<
   add(LocalMarkdown);
 
   for (const entry of processEntryPoints()) {
-    const resolved = resolvePiTuiFromEntry(entry);
-    if (!resolved) {
-      continue;
-    }
-    try {
-      const mod = (await import(pathToFileURL(resolved).href)) as {
-        Markdown?: unknown;
-      };
-      add(mod.Markdown);
-    } catch {
-      // Ignore unreadable runtime modules; local import may still work.
+    for (const resolved of resolvePiTuiPathsFromEntry(entry)) {
+      try {
+        const mod = (await import(pathToFileURL(resolved).href)) as {
+          Markdown?: unknown;
+        };
+        add(mod.Markdown);
+      } catch {
+        // Ignore unreadable runtime modules; other copies may still work.
+      }
     }
   }
 
@@ -207,7 +218,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   await applyMarkdownCodePatches();
 
   // Re-apply after /reload in case a fresh Markdown copy appears.
-  pi.on("session_start", () => {
-    void applyMarkdownCodePatches();
+  pi.on("session_start", async () => {
+    await applyMarkdownCodePatches();
   });
 }

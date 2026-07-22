@@ -1,9 +1,21 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Markdown, visibleWidth } from "@earendil-works/pi-tui";
 import extension, {
   applyMarkdownCodePatches,
   renderAmpCodeBlock,
+  resolvePiTuiPathsFromEntry,
 } from "./index";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 const theme = {
   codeBlockIndent: "  ",
@@ -55,7 +67,7 @@ describe("renderAmpCodeBlock", () => {
 });
 
 describe("markdown-code extension", () => {
-  test("patches Markdown.renderToken to drop fence chrome", async () => {
+  test("drops fence chrome for every fenced code block language", async () => {
     await extension({
       on() {},
     } as never);
@@ -80,17 +92,81 @@ describe("markdown-code extension", () => {
       codeBlockIndent: "  ",
     };
 
-    const out = new Markdown(
-      "```python\nprint(1)\n```\n\nhi",
-      0,
-      0,
-      mdTheme
-    ).render(40);
+    const markdown = [
+      "```text",
+      "@@session:<id>",
+      "```",
+      "",
+      "```ts",
+      "read_session({ id })",
+      "```",
+      "",
+      "```python",
+      "print(1)",
+      "```",
+      "",
+      "```json",
+      '{"ok":true}',
+      "```",
+      "",
+      "```made-up-language",
+      "unknown()",
+      "```",
+      "",
+      "```",
+      "plain",
+      "```",
+    ].join("\n");
+
+    const out = new Markdown(markdown, 0, 0, mdTheme).render(80);
     const text = out.map((line) => line.trimEnd()).join("\n");
 
+    expect(text).toContain("<text>@@session:<id>");
+    expect(text).toContain("<ts>read_session({ id })");
     expect(text).toContain("<python>print(1)");
+    expect(text).toContain('<json>{"ok":true}');
+    expect(text).toContain("unknown()");
+    expect(text).toContain("plain");
     expect(text).not.toContain("```");
     expect(text).not.toContain("BORDER:");
+  });
+
+  test("finds nested and hoisted pi-tui installs from one entry", () => {
+    const root = mkdtempSync(join(tmpdir(), "pim-markdown-code-"));
+    tempDirs.push(root);
+
+    const packageRoot = join(
+      root,
+      "node_modules",
+      "@earendil-works",
+      "pi-coding-agent"
+    );
+    const entry = join(packageRoot, "dist", "cli.js");
+    const nested = join(
+      packageRoot,
+      "node_modules",
+      "@earendil-works",
+      "pi-tui",
+      "dist",
+      "index.js"
+    );
+    const hoisted = join(
+      root,
+      "node_modules",
+      "@earendil-works",
+      "pi-tui",
+      "dist",
+      "index.js"
+    );
+
+    for (const file of [entry, nested, hoisted]) {
+      mkdirSync(join(file, ".."), { recursive: true });
+      writeFileSync(file, "export class Markdown {}\n");
+    }
+
+    expect(new Set(resolvePiTuiPathsFromEntry(entry))).toEqual(
+      new Set([nested, hoisted])
+    );
   });
 
   test("applyMarkdownCodePatches is idempotent", async () => {
