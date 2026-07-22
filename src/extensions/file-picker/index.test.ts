@@ -233,6 +233,69 @@ test("applying an @ file completion does not append a trailing space", () => {
   expect(result.cursorCol).toBe("see @src/foo.ts".length);
 });
 
+test("@@ uses session suggestions before the @ file picker", async () => {
+  let fileRanks = 0;
+  const provider = createFilePickerProviderFactory({
+    engine: {
+      async refreshRelative() {},
+      async rank() {
+        fileRanks += 1;
+        return [];
+      },
+    },
+    sessionEngine: {
+      refresh() {},
+      async rank(query) {
+        expect(query).toBe("auth");
+        return [
+          {
+            value: "@@session:session-id",
+            label: "Auth work",
+            description: "session-id",
+          },
+        ];
+      },
+    },
+  })(currentProvider);
+
+  const line = "continue @@auth";
+  const result = await provider.getSuggestions(
+    [line],
+    0,
+    line.length,
+    autocompleteOptions()
+  );
+
+  expect(result?.prefix).toBe("@@auth");
+  expect(result?.items[0]?.value).toBe("@@session:session-id");
+  expect(fileRanks).toBe(0);
+});
+
+test("applying an @@ session completion replaces only the active token", () => {
+  const provider = createFilePickerProviderFactory({
+    engine: new InProcessFilePickerSuggestionEngine({
+      loadRelativeCatalog: async () => [],
+    }),
+    sessionEngine: {
+      refresh() {},
+      async rank() {
+        return [];
+      },
+    },
+  })(currentProvider);
+
+  const result = provider.applyCompletion(
+    ["continue @@au please"],
+    0,
+    "continue @@au".length,
+    { value: "@@session:full-id", label: "Auth" },
+    "@@au"
+  );
+
+  expect(result.lines).toEqual(["continue @@session:full-id please"]);
+  expect(result.cursorCol).toBe("continue @@session:full-id".length);
+});
+
 test("applying an @ directory completion keeps the trailing slash and no space", () => {
   const factory = createTestFactory(async () => []);
   const provider = factory(currentProvider);

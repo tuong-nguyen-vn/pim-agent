@@ -12,6 +12,7 @@ const shortcuts = [
   ["/hotkeys", "Show all keyboard shortcuts"],
   ["/settings", "Open settings menu"],
   ["@<path>", "Attach files", "<path>"],
+  ["@@<query>", "Reference a previous workspace session", "<query>"],
   ["!<command>", "Run bash command", "<command>"],
   ["!!<command>", "Run bash command (excluded from context)", "<command>"],
 ] as const;

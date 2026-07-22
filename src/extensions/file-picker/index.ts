@@ -3,10 +3,13 @@ import type {
   ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteProvider } from "@earendil-works/pi-tui";
+import { SessionSuggestionEngine } from "../read-session/SessionSuggestionEngine";
 import type { FilePickerSuggestionEngine } from "./FilePickerSuggestionEngine";
 import { WorkerFilePickerSuggestionEngine } from "./WorkerFilePickerSuggestionEngine";
 
 const MAX_VISIBLE_ROWS = 50;
+const MAX_SESSION_ROWS = 20;
+const SESSION_PREFIX = /(?:^|\s)@@([^\s]*)$/;
 const AT_PREFIX = /(?:^|\s)@(\S*)$/;
 
 // Pi cancels autocomplete after Tab; for directories we want to keep
@@ -38,6 +41,7 @@ function sameActiveAtToken(
 
 export type FilePickerProviderFactoryOptions = {
   readonly engine: FilePickerSuggestionEngine;
+  readonly sessionEngine?: Pick<SessionSuggestionEngine, "rank" | "refresh">;
 };
 
 type ActiveAtToken = {
@@ -59,6 +63,35 @@ export function createFilePickerProviderFactory(
       async getSuggestions(lines, cursorLine, cursorCol, autocompleteOptions) {
         const line = lines[cursorLine] ?? "";
         const beforeCursor = line.slice(0, cursorCol);
+
+        const sessionMatch = beforeCursor.match(SESSION_PREFIX);
+        if (sessionMatch && options.sessionEngine) {
+          activeAtToken = undefined;
+          const query = sessionMatch[1] ?? "";
+          const items = await options.sessionEngine
+            .rank(query, {
+              limit: MAX_SESSION_ROWS,
+              signal: autocompleteOptions.signal,
+            })
+            .catch(() => undefined);
+          if (items === undefined) {
+            return current.getSuggestions(
+              lines,
+              cursorLine,
+              cursorCol,
+              autocompleteOptions
+            );
+          }
+          if (items.length === 0) {
+            return current.getSuggestions(
+              lines,
+              cursorLine,
+              cursorCol,
+              autocompleteOptions
+            );
+          }
+          return { items: [...items], prefix: `@@${query}` };
+        }
 
         const atMatch = beforeCursor.match(AT_PREFIX);
         if (!atMatch) {
@@ -168,6 +201,11 @@ export default function (pi: ExtensionAPI): void {
     ctx.ui.addAutocompleteProvider(
       createFilePickerProviderFactory({
         engine: new WorkerFilePickerSuggestionEngine(ctx.cwd),
+        sessionEngine: new SessionSuggestionEngine(
+          ctx.cwd,
+          ctx.sessionManager.getSessionDir(),
+          () => ctx.sessionManager.getSessionId()
+        ),
       })
     );
   });

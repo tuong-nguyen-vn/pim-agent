@@ -53,6 +53,8 @@ export function renderApplyPatchCall(
     rawPath: firstPath ? Paths.resolve(firstPath, context.cwd) : undefined,
     theme,
     context,
+    separator: " ",
+    markerGlyph: Renderer.markerGlyphFor,
   });
 }
 
@@ -228,6 +230,8 @@ export function renderApplyPatchResult(
         theme,
         markerColor,
         lastComponent: state.titleComponent,
+        separator: " ",
+        markerGlyph: Renderer.markerGlyphFor(markerColor),
       });
     } else {
       // A blank padding row separates each file from the previous one.
@@ -242,6 +246,8 @@ export function renderApplyPatchResult(
           theme,
           markerColor,
           lastComponent: undefined,
+          separator: " ",
+          markerGlyph: Renderer.markerGlyphFor(markerColor),
         })
       );
     }
