@@ -379,11 +379,11 @@ export default function (pi: ExtensionAPI): void {
           };
         }
         const note = args.question?.trim()
-          ? `Viewing image "${absPath}" (question: ${args.question.trim()}). The image is attached.`
-          : `Viewing image "${absPath}". The image is attached.`;
+          ? `The image is attached (question: ${args.question.trim()}).`
+          : "The image is attached.";
         return {
           content: [
-            { type: "text" as const, text: `${reason} Falling back to the current model.\n\n${note}` },
+            { type: "text" as const, text: `${reason} Falling back to the current model. ${note}` },
             imageBlock,
           ],
           details: {
@@ -419,9 +419,8 @@ export default function (pi: ExtensionAPI): void {
           signal
         );
         const preview = await buildPreview(base64, mimeType);
-        const header = `Viewing image "${absPath}" [${mimeType}, ${buffer.length} bytes] via ${visionModel}.\n\n`;
         return {
-          content: [{ type: "text" as const, text: header + description }],
+          content: [{ type: "text" as const, text: description }],
           details: {
             mimeType,
             bytes: buffer.length,
