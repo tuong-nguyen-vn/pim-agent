@@ -291,7 +291,7 @@ export default function (pi: ExtensionAPI): void {
     description:
       "View an image file. Renders it inline in the terminal and returns a description. " +
       "Use this for screenshots, diagrams, photos, mockups, or any image the user references. " +
-      "Works even when the current model cannot read images (a vision fallback model is used automatically).",
+      "Always uses the configured view_media model to describe the image; falls back to the current model if that fails.",
     promptSnippet: "View an image file",
     parameters: Type.Object({
       path: Type.String({
@@ -328,7 +328,6 @@ export default function (pi: ExtensionAPI): void {
 
       const buffer = Buffer.from(await Bun.file(absPath).arrayBuffer());
       const base64 = buffer.toString("base64");
-      const supportsImages = modelSupportsImages(ctx.model);
 
       const imageBlock = {
         type: "image" as const,
@@ -336,46 +335,47 @@ export default function (pi: ExtensionAPI): void {
         mimeType,
       };
 
-      if (supportsImages) {
+      const fallbackToMainModel = (reason: string) => {
+        const supportsImages = modelSupportsImages(ctx.model);
+        if (!supportsImages) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `view_media: ${reason} Current model cannot read images either; image is attached for display only.`,
+              },
+              imageBlock,
+            ],
+            details: { isError: true, mimeType, bytes: buffer.length },
+          };
+        }
         const note = args.question?.trim()
           ? `Viewing image "${absPath}" (question: ${args.question.trim()}). The image is attached.`
           : `Viewing image "${absPath}". The image is attached.`;
         return {
-          content: [{ type: "text" as const, text: note }, imageBlock],
+          content: [
+            { type: "text" as const, text: `${reason} Falling back to the current model.\n\n${note}` },
+            imageBlock,
+          ],
           details: {
             mimeType,
             bytes: buffer.length,
             source: "direct" as const,
           } satisfies ViewMediaDetails,
         };
-      }
+      };
 
       const model = await PimSettings.getViewMediaModel();
       const provider = await ModelResolver.resolveProvider(model);
       if (!provider) {
-        const note = `Viewing image "${absPath}". The image is attached for display only.`;
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `${note}\n\nview_media: vision fallback model "${model}" not found in any provider in ~/.pi/agent/models.json. Set viewMedia.model in ~/.pim/settings.json to an available model.`,
-            },
-            imageBlock,
-          ],
-          details: { isError: true, mimeType, bytes: buffer.length },
-        };
+        return fallbackToMainModel(
+          `configured view_media model "${model}" not found in any provider in ~/.pi/agent/models.json.`
+        );
       }
       if (!provider.api) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `view_media: provider "${provider.providerName}" for model "${model}" is missing \`api\` in ~/.pi/agent/models.json. Set it to openai-completions, google-generative-ai, or anthropic-messages.`,
-            },
-            imageBlock,
-          ],
-          details: { isError: true, mimeType, bytes: buffer.length },
-        };
+        return fallbackToMainModel(
+          `provider "${provider.providerName}" for model "${model}" is missing \`api\` in ~/.pi/agent/models.json.`
+        );
       }
 
       try {
@@ -389,9 +389,7 @@ export default function (pi: ExtensionAPI): void {
           args.question ?? "",
           signal
         );
-        const header =
-          `Viewing image "${absPath}" [${mimeType}, ${buffer.length} bytes].\n` +
-          `Current model cannot read images; description via ${visionModel}:\n\n`;
+        const header = `Viewing image "${absPath}" [${mimeType}, ${buffer.length} bytes] via ${visionModel}:\n\n`;
         return {
           content: [
             { type: "text" as const, text: header + description },
@@ -406,16 +404,9 @@ export default function (pi: ExtensionAPI): void {
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `view_media: read "${absPath}" but vision fallback failed: ${msg}. Image is attached for display only.`,
-            },
-            imageBlock,
-          ],
-          details: { isError: true, mimeType, bytes: buffer.length },
-        };
+        return fallbackToMainModel(
+          `view_media model "${model}" failed: ${msg}.`
+        );
       }
     },
     renderCall(args, theme, context) {
