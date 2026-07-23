@@ -5,6 +5,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { TUI } from "@earendil-works/pi-tui";
 import { PimSettings } from "../../shared/PimSettings";
+import { PromptHistory } from "../../shared/PromptHistory";
 import { AmpEditor } from "./AmpEditor";
 import { EMPTY_GIT, fetchGitStatus, watchGitDir } from "./git";
 
@@ -21,11 +22,16 @@ export function getTotalCost(ctx: ExtensionContext): number {
   return cost;
 }
 
-function installAmpChrome(pi: ExtensionAPI, ctx: ExtensionContext): void {
+async function installAmpChrome(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext
+): Promise<void> {
   if (!ctx.hasUI) {
     return;
   }
   activeChromeCleanup?.();
+
+  const initialHistory = await PromptHistory.load();
 
   let gitState = EMPTY_GIT;
   let activeTui: TUI | undefined;
@@ -60,6 +66,7 @@ function installAmpChrome(pi: ExtensionAPI, ctx: ExtensionContext): void {
       ctx,
       getGitState: () => gitState,
       getCost: () => getTotalCost(ctx),
+      initialHistory,
     });
   });
 
@@ -82,7 +89,7 @@ export default function (pi: ExtensionAPI): void {
     }
     const { enabled } = await PimSettings.get("powerline");
     if (enabled) {
-      installAmpChrome(pi, ctx);
+      await installAmpChrome(pi, ctx);
     } else {
       activeChromeCleanup?.();
       ctx.ui.setFooter(undefined);

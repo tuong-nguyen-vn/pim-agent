@@ -8,6 +8,7 @@ import {
 import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { Paths } from "../../shared/Paths";
+import { PromptHistory } from "../../shared/PromptHistory";
 import type { GitState } from "./git";
 
 const GIT_BRANCH_ICON = "\ue725";
@@ -17,6 +18,7 @@ type AmpEditorOptions = {
   readonly ctx: ExtensionContext;
   readonly getGitState: () => GitState;
   readonly getCost: () => number;
+  readonly initialHistory: readonly string[];
 };
 
 const MIN_INPUT_LINES = 3;
@@ -116,6 +118,19 @@ export class AmpEditor extends CustomEditor {
     private readonly options: AmpEditorOptions
   ) {
     super(tui, theme, keybindings, { paddingX: 1 });
+    // Seed prompt history from disk so up/down arrow navigation works across
+    // sessions. Uses the base addToHistory() (not the override below) so this
+    // replay doesn't immediately re-persist the same entries back to disk.
+    for (const entry of options.initialHistory) {
+      super.addToHistory(entry);
+    }
+  }
+
+  public override addToHistory(text: string): void {
+    super.addToHistory(text);
+    PromptHistory.persist(
+      (this as unknown as { history: string[] }).history
+    );
   }
 
   public override render(width: number): string[] {
