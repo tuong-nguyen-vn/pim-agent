@@ -58,7 +58,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     };
 
     const title =
-      theme.bold(theme.fg("accent", "AMP - Pi Improved")) +
+      theme.bold(theme.fg("accent", "AMP - Pi")) +
       " " +
       theme.italic(theme.fg("muted", `v${version}`));
     ctx.ui.setWidget(SPLASH_ID, [

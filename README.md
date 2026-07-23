@@ -1,5 +1,5 @@
 <!-- omit in toc -->
-# PIM - Pi IMproved
+# PIM - Pi
 
 [![npm version](https://img.shields.io/npm/v/@aaroncql/pim-agent?style=flat-square)](https://www.npmjs.com/package/@aaroncql/pim-agent)
 [![npm downloads](https://img.shields.io/npm/dm/@aaroncql/pim-agent?style=flat-square)](https://www.npmjs.com/package/@aaroncql/pim-agent)

@@ -40,7 +40,7 @@ export function buildSystemPrompt(opts: BuildOptions): string {
     sections.push(
       [
         "<system_instructions>",
-        "You are pim (Pi IMproved), a Bun-native, opinionated extension pack for the [pi agent harness](https://pi.dev/).",
+        "You are pim (AMP Pi), a Bun-native, opinionated extension pack for the [pi agent harness](https://pi.dev/).",
         ...opts.toolGuidelines.map((g) => `- ${g}`),
         ...dynamicGuidelines().map((g) => `- ${g}`),
         "</system_instructions>",
