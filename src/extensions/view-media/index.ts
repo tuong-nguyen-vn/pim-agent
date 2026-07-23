@@ -3,7 +3,9 @@ import type {
   ExtensionAPI,
   Theme,
 } from "@earendil-works/pi-coding-agent";
+import { convertToPng } from "@earendil-works/pi-coding-agent";
 import type { Api } from "@earendil-works/pi-ai";
+import { getCapabilities, Image } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { ModelResolver } from "../../shared/ModelResolver";
 import { Paths } from "../../shared/Paths";
@@ -36,6 +38,10 @@ type ViewMediaDetails = {
   readonly bytes?: number;
   readonly source?: "direct" | "vision-fallback";
   readonly visionModel?: string;
+  /** Base64 image data for terminal-only preview. Never sent to the model. */
+  readonly previewData?: string;
+  /** Mime type of `previewData` (may differ from `mimeType` if converted for Kitty). */
+  readonly previewMimeType?: string;
 };
 
 type ViewMediaRenderContext = StatefulToolCallTitleContext & {
@@ -62,6 +68,23 @@ function errResult(text: string): AgentToolResult<ViewMediaDetails> {
     content: [{ type: "text", text }],
     details: { isError: true },
   };
+}
+
+/**
+ * Prepare base64 image data for terminal-only preview. Kitty's graphics
+ * protocol hard-codes PNG (`f=100`), so non-PNG images must be converted or
+ * they render as garbage. Other protocols (iTerm2, sixel) accept the raw
+ * bytes as-is.
+ */
+async function buildPreview(
+  base64: string,
+  mimeType: string
+): Promise<{ data: string; mimeType: string }> {
+  if (mimeType === "image/png" || getCapabilities().images !== "kitty") {
+    return { data: base64, mimeType };
+  }
+  const converted = await convertToPng(base64, mimeType).catch(() => null);
+  return converted ?? { data: base64, mimeType };
 }
 
 function renderTitle(
@@ -335,18 +358,24 @@ export default function (pi: ExtensionAPI): void {
         mimeType,
       };
 
-      const fallbackToMainModel = (reason: string) => {
+      const fallbackToMainModel = async (reason: string) => {
         const supportsImages = modelSupportsImages(ctx.model);
         if (!supportsImages) {
+          const preview = await buildPreview(base64, mimeType);
           return {
             content: [
               {
                 type: "text" as const,
-                text: `view_media: ${reason} Current model cannot read images either; image is attached for display only.`,
+                text: `view_media: ${reason} Current model cannot read images either.`,
               },
-              imageBlock,
             ],
-            details: { isError: true, mimeType, bytes: buffer.length },
+            details: {
+              isError: true,
+              mimeType,
+              bytes: buffer.length,
+              previewData: preview.data,
+              previewMimeType: preview.mimeType,
+            } satisfies ViewMediaDetails,
           };
         }
         const note = args.question?.trim()
@@ -368,12 +397,12 @@ export default function (pi: ExtensionAPI): void {
       const model = await PimSettings.getViewMediaModel();
       const provider = await ModelResolver.resolveProvider(model);
       if (!provider) {
-        return fallbackToMainModel(
+        return await fallbackToMainModel(
           `configured view_media model "${model}" not found in any provider in ~/.pi/agent/models.json.`
         );
       }
       if (!provider.api) {
-        return fallbackToMainModel(
+        return await fallbackToMainModel(
           `provider "${provider.providerName}" for model "${model}" is missing \`api\` in ~/.pi/agent/models.json.`
         );
       }
@@ -389,22 +418,22 @@ export default function (pi: ExtensionAPI): void {
           args.question ?? "",
           signal
         );
-        const header = `Viewing image "${absPath}" [${mimeType}, ${buffer.length} bytes] via ${visionModel}:\n\n`;
+        const preview = await buildPreview(base64, mimeType);
+        const header = `Viewing image "${absPath}" [${mimeType}, ${buffer.length} bytes] via ${visionModel}.\n\n`;
         return {
-          content: [
-            { type: "text" as const, text: header + description },
-            imageBlock,
-          ],
+          content: [{ type: "text" as const, text: header + description }],
           details: {
             mimeType,
             bytes: buffer.length,
             source: "vision-fallback" as const,
             visionModel,
+            previewData: preview.data,
+            previewMimeType: preview.mimeType,
           } satisfies ViewMediaDetails,
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        return fallbackToMainModel(
+        return await fallbackToMainModel(
           `view_media model "${model}" failed: ${msg}.`
         );
       }
@@ -421,26 +450,36 @@ export default function (pi: ExtensionAPI): void {
       renderTitle(ctx.args ?? {}, theme, ctx);
 
       const details = result.details as ViewMediaDetails | undefined;
-      if (details?.isError) {
-        return Renderer.renderBorderedResult({
-          result,
-          options,
-          theme,
-          context: ctx,
-          previewLines: PREVIEW_LINES,
-          prefix: { prefix: "   ", width: 3 },
-        });
+      const container = details?.isError
+        ? Renderer.renderBorderedResult({
+            result,
+            options,
+            theme,
+            context: ctx,
+            previewLines: PREVIEW_LINES,
+            prefix: { prefix: "   ", width: 3 },
+          })
+        : Renderer.renderBorderedResult({
+            result,
+            options,
+            theme,
+            context: ctx,
+            previewLines: PREVIEW_LINES,
+            prefix: { prefix: "   ", width: 3 },
+            showCollapsedSuccess: true,
+          });
+
+      const previewMimeType = details?.previewMimeType ?? details?.mimeType;
+      if (details?.previewData && previewMimeType && !options.isPartial) {
+        container.addChild(
+          new Image(details.previewData, previewMimeType, {
+            fallbackColor: (s: string) => theme.fg("toolOutput", s),
+          })
+        );
+        container.invalidate();
       }
 
-      return Renderer.renderBorderedResult({
-        result,
-        options,
-        theme,
-        context: ctx,
-        previewLines: PREVIEW_LINES,
-        prefix: { prefix: "   ", width: 3 },
-        showCollapsedSuccess: true,
-      });
+      return container;
     },
   });
 }
