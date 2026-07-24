@@ -79,6 +79,7 @@ export type TitleOptions = {
   readonly path: string | undefined;
   readonly glob: string | undefined;
   readonly cwd: string;
+  readonly baseCwd?: string;
   readonly fileCount?: number;
 };
 
@@ -94,11 +95,17 @@ export function formatTitle(options: TitleOptions): string {
       : Paths.displayRelative(resolved, options.cwd);
   const target = joinTarget(dir, options.glob);
   const location = target ? ` in ${target}` : "";
+  const cwdSuffix =
+    options.baseCwd !== undefined && options.cwd !== options.baseCwd
+      ? ` (in: ${Paths.abbreviateHome(
+          Paths.displayRelative(options.cwd, options.baseCwd)
+        )})`
+      : "";
   const suffix =
     options.fileCount === undefined
       ? ""
       : ` (${options.fileCount} ${options.fileCount === 1 ? "file" : "files"})`;
-  return `${pattern}${location}${suffix}`;
+  return `${pattern}${location}${cwdSuffix}${suffix}`;
 }
 
 function joinTarget(

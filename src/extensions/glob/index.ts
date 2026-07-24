@@ -35,10 +35,14 @@ function renderTitle(
   context: GlobRenderContext
 ) {
   const state = context.state as GlobCallState;
+  const effectiveCwd = input.cwd
+    ? Paths.resolve(input.cwd, context.cwd)
+    : context.cwd;
   const title = formatTitle({
     pattern: input.pattern,
     path: input.path,
-    cwd: context.cwd,
+    cwd: effectiveCwd,
+    baseCwd: context.cwd,
     fileCount: state.fileCount,
   });
   const markerColor = Renderer.markerColorFor(
@@ -76,22 +80,24 @@ export default function (pi: ExtensionAPI): void {
         includeIgnored,
         pathFormat,
         headLimit,
+        cwd,
       } = params as GlobInput;
 
       if (signal?.aborted) {
         throw new Error("Glob aborted before execution.");
       }
 
+      const effectiveCwd = cwd ? Paths.requireAbsolute(cwd) : ctx.cwd;
       const limit = headLimit ?? GLOB_HEAD_LIMIT_MAX;
       const resolvedPathFormat = pathFormat ?? DEFAULT_PATH_FORMAT;
-      const absolutePath = Paths.resolve(path ?? ".", ctx.cwd);
+      const absolutePath = Paths.resolve(path ?? ".", effectiveCwd);
       const matches = await findFiles(absolutePath, pattern, {
         exclude,
         includeDotfiles: includeDotfiles ?? false,
         includeIgnored: includeIgnored ?? false,
       });
       const outcome = renderFiles(matches, limit, {
-        cwd: ctx.cwd,
+        cwd: effectiveCwd,
         pathFormat: resolvedPathFormat,
       });
       const content: Array<{ type: "text"; text: string }> = [

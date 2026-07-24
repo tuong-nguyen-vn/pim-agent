@@ -10,6 +10,12 @@ export const bashSchema = Type.Object({
   command: Type.String({
     description: "Runs via bash -lc, so login shell init applies.",
   }),
+  cwd: Type.Optional(
+    Type.String({
+      description:
+        "Working directory for the command — an absolute path (a `~` prefix is expanded to the home directory). Defaults to the workspace root. Prefer passing `cwd` over prefixing the command with `cd … &&`.",
+    })
+  ),
   timeoutMs: Type.Optional(
     Type.Integer({
       minimum: 1,

@@ -47,6 +47,12 @@ export const globSchema = Type.Object({
       description: `Maximum returned entries. Defaults to ${GLOB_HEAD_LIMIT_MAX}.`,
     })
   ),
+  cwd: Type.Optional(
+    Type.String({
+      description:
+        "Working directory to glob from — an absolute path (a `~` prefix is expanded to the home directory). `path` is resolved against this and relative output paths are computed against this. Defaults to the workspace root.",
+    })
+  ),
 });
 
 export type GlobInput = Static<typeof globSchema>;

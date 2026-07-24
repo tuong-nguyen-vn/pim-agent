@@ -130,9 +130,7 @@ function processEntryPoints(): string[] {
   }
   // amp-pi: `bun /path/to/pi-coding-agent/dist/cli.js ...` → Bun.main is cli.js
   const bunMain =
-    typeof Bun !== "undefined"
-      ? (Bun as { main?: string }).main
-      : undefined;
+    typeof Bun !== "undefined" ? (Bun as { main?: string }).main : undefined;
   if (bunMain && bunMain !== argv1) {
     entries.push(bunMain);
   }

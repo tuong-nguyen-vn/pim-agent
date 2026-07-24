@@ -84,6 +84,12 @@ export const grepSchema = Type.Object({
       description: `Maximum returned items. Defaults to ${GREP_HEAD_LIMIT_MAX}.`,
     })
   ),
+  cwd: Type.Optional(
+    Type.String({
+      description:
+        "Working directory to search from — an absolute path (a `~` prefix is expanded to the home directory). `path` is resolved against this and relative output paths are computed against this. Defaults to the workspace root.",
+    })
+  ),
 });
 
 export type GrepInput = Static<typeof grepSchema>;

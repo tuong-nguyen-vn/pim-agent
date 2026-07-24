@@ -383,7 +383,10 @@ export default function (pi: ExtensionAPI): void {
           : "The image is attached.";
         return {
           content: [
-            { type: "text" as const, text: `${reason} Falling back to the current model. ${note}` },
+            {
+              type: "text" as const,
+              text: `${reason} Falling back to the current model. ${note}`,
+            },
             imageBlock,
           ],
           details: {

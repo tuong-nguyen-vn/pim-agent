@@ -2,6 +2,7 @@ import type {
   AgentToolResult,
   ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
+import { Paths } from "../../shared/Paths";
 import {
   Renderer,
   type StatefulToolCallTitleContext,
@@ -16,6 +17,7 @@ const PREVIEW_LINES = 5;
 
 type BashRenderContext = StatefulToolCallTitleContext & {
   readonly args?: Partial<BashInput>;
+  readonly cwd: string;
 };
 
 function renderTitle(
@@ -25,9 +27,10 @@ function renderTitle(
 ) {
   const command =
     typeof args?.command === "string" && args.command ? args.command : "...";
+  const title = `${command}${Paths.cwdSuffix(args?.cwd, context.cwd)}`;
   return Renderer.renderStatefulToolCallTitle({
     label: "",
-    title: command,
+    title,
     theme,
     context,
     markerGlyph: "$",
@@ -95,19 +98,30 @@ export default function (pi: ExtensionAPI): void {
     description:
       "Execute a bash command in the cwd. " +
       "Returns exit code, signal (if any), and stdout/stderr captured separately. " +
-      "Prefer commands that emit only what you need; keep output as small as possible.",
+      "Prefer commands that emit only what you need; keep output as small as possible. " +
+      "Pass `cwd` (an absolute path) to run in another directory instead of prefixing the command with `cd … &&`.",
     parameters: bashSchema,
     renderShell: "self",
     executionMode: "sequential",
     async execute(_id, params, signal, _onUpdate, ctx) {
-      const { command, timeoutMs: requestedTimeoutMs } = params as BashInput;
+      const {
+        command,
+        cwd,
+        timeoutMs: requestedTimeoutMs,
+      } = params as BashInput;
       const timeoutMs = requestedTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+      const effectiveCwd = cwd ? Paths.requireAbsolute(cwd) : ctx.cwd;
 
       if (signal?.aborted) {
         throw new Error("Command aborted before execution.");
       }
 
-      const result = await runBashCommand(command, timeoutMs, signal, ctx.cwd);
+      const result = await runBashCommand(
+        command,
+        timeoutMs,
+        signal,
+        effectiveCwd
+      );
       const text = formatResult(result, timeoutMs);
       if (isErrorResult(result)) {
         throw new Error(text);

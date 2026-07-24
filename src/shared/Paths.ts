@@ -49,4 +49,33 @@ export class Paths {
   ): string {
     return path ? Paths.displayRelative(path, cwd) : placeholder;
   }
+
+  /**
+   * Render a " (in: <relative>)" suffix when `cwd` resolves to a directory
+   * different from `baseCwd`. Returns an empty string when `cwd` is unset or
+   * equal to `baseCwd`, so callers can append it unconditionally.
+   */
+  public static cwdSuffix(cwd: string | undefined, baseCwd: string): string {
+    if (!cwd) {
+      return "";
+    }
+    const resolved = Paths.resolve(cwd, baseCwd);
+    if (resolved === baseCwd) {
+      return "";
+    }
+    return ` (in: ${Paths.abbreviateHome(Paths.displayRelative(resolved, baseCwd))})`;
+  }
+
+  /**
+   * Expand `~` and assert the result is absolute. Throws for relative paths
+   * so callers can reject non-absolute `cwd` values early. Returns the
+   * expanded absolute path.
+   */
+  public static requireAbsolute(path: string): string {
+    const expanded = Paths.expandHome(path);
+    if (!isAbsolute(expanded)) {
+      throw new Error(`Path must be absolute, not relative: ${path}`);
+    }
+    return expanded;
+  }
 }

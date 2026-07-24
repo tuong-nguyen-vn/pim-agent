@@ -128,9 +128,7 @@ export class AmpEditor extends CustomEditor {
 
   public override addToHistory(text: string): void {
     super.addToHistory(text);
-    PromptHistory.persist(
-      (this as unknown as { history: string[] }).history
-    );
+    PromptHistory.persist((this as unknown as { history: string[] }).history);
   }
 
   public override render(width: number): string[] {

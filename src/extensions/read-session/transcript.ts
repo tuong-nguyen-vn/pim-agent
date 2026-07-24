@@ -114,7 +114,9 @@ export function buildTranscript(
   while (headIndex < blocks.length && headLength < headBudget) {
     const separator = headParts.length === 0 ? 0 : 2;
     const remaining = headBudget - headLength - separator;
-    if (remaining <= 0) {break;}
+    if (remaining <= 0) {
+      break;
+    }
     const block = blocks[headIndex] ?? "";
     headParts.push(block.slice(0, remaining));
     headLength += Math.min(block.length, remaining) + separator;
@@ -127,7 +129,9 @@ export function buildTranscript(
   while (tailIndex >= headIndex && tailLength < tailBudget) {
     const separator = tailParts.length === 0 ? 0 : 2;
     const remaining = tailBudget - tailLength - separator;
-    if (remaining <= 0) {break;}
+    if (remaining <= 0) {
+      break;
+    }
     const block = blocks[tailIndex] ?? "";
     tailParts.unshift(
       block.length <= remaining

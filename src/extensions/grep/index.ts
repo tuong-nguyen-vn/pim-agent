@@ -35,11 +35,15 @@ function renderTitle(
   context: GrepRenderContext
 ) {
   const state = context.state as GrepCallState;
+  const effectiveCwd = input.cwd
+    ? Paths.resolve(input.cwd, context.cwd)
+    : context.cwd;
   const title = formatTitle({
     pattern: input.pattern,
     path: input.path,
     glob: input.glob,
-    cwd: context.cwd,
+    cwd: effectiveCwd,
+    baseCwd: context.cwd,
     fileCount: state.fileCount,
   });
   const markerColor = Renderer.markerColorFor(
@@ -82,12 +86,14 @@ export default function (pi: ExtensionAPI): void {
         pathFormat,
         caseInsensitive,
         headLimit,
+        cwd,
       } = params as GrepInput;
 
       if (signal?.aborted) {
         throw new Error("Grep aborted before execution.");
       }
 
+      const effectiveCwd = cwd ? Paths.requireAbsolute(cwd) : ctx.cwd;
       const resolvedPathFormat = pathFormat ?? DEFAULT_PATH_FORMAT;
       const resolvedContext = context ?? 0;
       const resolvedOutputMode = outputMode ?? DEFAULT_OUTPUT_MODE;
@@ -100,14 +106,14 @@ export default function (pi: ExtensionAPI): void {
         caseInsensitive: caseInsensitive ?? false,
         matchAcrossLines: matchAcrossLines ?? false,
       });
-      const absolutePath = Paths.resolve(path ?? ".", ctx.cwd);
+      const absolutePath = Paths.resolve(path ?? ".", effectiveCwd);
       const matches = await findMatches(absolutePath, glob, matcher, {
         exclude,
         includeDotfiles: includeDotfiles ?? false,
         includeIgnored: includeIgnored ?? false,
       });
       const outcome = renderMatches(matches, resolvedOutputMode, limit, {
-        cwd: ctx.cwd,
+        cwd: effectiveCwd,
         pathFormat: resolvedPathFormat,
         context: resolvedContext,
       });

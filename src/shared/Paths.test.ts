@@ -49,3 +49,53 @@ describe("Paths.titleOr", () => {
     expect(Paths.titleOr("/other/file.ts", "/work")).toBe("/other/file.ts");
   });
 });
+
+describe("Paths.cwdSuffix", () => {
+  test("returns empty string when cwd is undefined", () => {
+    expect(Paths.cwdSuffix(undefined, "/work")).toBe("");
+  });
+
+  test("returns empty string when cwd resolves to baseCwd", () => {
+    expect(Paths.cwdSuffix(".", "/work")).toBe("");
+    expect(Paths.cwdSuffix("/work", "/work")).toBe("");
+  });
+
+  test("returns ' (in: <relative>)' for a relative cwd", () => {
+    expect(Paths.cwdSuffix("hrm/backend", "/work")).toBe(" (in: hrm/backend)");
+  });
+
+  test("returns ' (in: <relative>)' for an absolute cwd under base", () => {
+    expect(Paths.cwdSuffix("/work/hrm", "/work")).toBe(" (in: hrm)");
+  });
+
+  test("abbreviates home for a cwd outside the workspace", () => {
+    expect(
+      Paths.cwdSuffix("~/Workspaces/projects/hdx", "/Users/me/work")
+    ).toBe(" (in: ~/Workspaces/projects/hdx)");
+  });
+});
+
+describe("Paths.requireAbsolute", () => {
+  test("returns the expanded path for an absolute path", () => {
+    expect(Paths.requireAbsolute("/work/hrm")).toBe("/work/hrm");
+  });
+
+  test("expands ~ and returns the absolute home path", () => {
+    const home = homedir();
+    expect(Paths.requireAbsolute("~/Workspaces")).toBe(
+      join(home, "Workspaces")
+    );
+  });
+
+  test("throws for a relative path", () => {
+    expect(() => Paths.requireAbsolute("attendance/backend")).toThrow(
+      "Path must be absolute, not relative: attendance/backend"
+    );
+  });
+
+  test("throws for a dot-prefixed relative path", () => {
+    expect(() => Paths.requireAbsolute("./hrm")).toThrow(
+      "Path must be absolute, not relative: ./hrm"
+    );
+  });
+});
