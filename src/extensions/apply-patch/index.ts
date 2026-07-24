@@ -24,6 +24,7 @@ export default function (pi: ExtensionAPI): void {
     prepareArguments: prepareApplyPatchArguments,
     renderShell: "self",
     executionMode: "sequential",
+    constrainedSampling: { type: "json_schema", strict: "prefer" },
     async execute(_id, params, signal, _onUpdate, ctx) {
       const { input } = params as ApplyPatchInput;
 

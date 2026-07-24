@@ -68,6 +68,7 @@ export default function (pi: ExtensionAPI): void {
     parameters: todoSchema,
     renderShell: "self",
     executionMode: "sequential",
+    constrainedSampling: { type: "json_schema", strict: "prefer" },
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const items = replaceItems(ctx.sessionManager, params.todos);
       return {

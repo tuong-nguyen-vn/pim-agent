@@ -75,7 +75,8 @@ export async function runBashCommand(
   command: string,
   timeoutMs: number,
   signal: AbortSignal | undefined,
-  cwd: string
+  cwd: string,
+  env?: NodeJS.ProcessEnv
 ): Promise<BashCommandResult> {
   const startedAt = Date.now();
   const stdoutCap = new StreamCapture();
@@ -89,7 +90,7 @@ export async function runBashCommand(
     cwd,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env },
+    env: env ?? { ...process.env },
     detached: true,
   });
   if (proc.pid !== undefined) {

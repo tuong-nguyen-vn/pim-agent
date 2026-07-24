@@ -19,6 +19,7 @@ export default function (pi: ExtensionAPI): void {
     parameters: writeSchema,
     renderShell: "self",
     executionMode: "sequential",
+    constrainedSampling: { type: "json_schema", strict: "prefer" },
     async execute(_id, params, signal, _onUpdate, ctx) {
       const { path, content } = params as WriteInput;
 
@@ -44,7 +45,7 @@ export default function (pi: ExtensionAPI): void {
         separator: " ",
         markerGlyph: Renderer.markerGlyphFor,
         link: true,
-        clickableLink: false,
+        clickableLink: true,
         padTitle: false,
       });
     },

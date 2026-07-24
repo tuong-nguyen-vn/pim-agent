@@ -55,6 +55,8 @@ export function renderApplyPatchCall(
     context,
     separator: " ",
     markerGlyph: Renderer.markerGlyphFor,
+    link: true,
+    clickableLink: true,
   });
 }
 

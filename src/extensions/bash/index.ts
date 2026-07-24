@@ -1,6 +1,7 @@
 import type {
   AgentToolResult,
   ExtensionAPI,
+  ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { Paths } from "../../shared/Paths";
 import {
@@ -89,6 +90,36 @@ function installLifecycleHandlers(): void {
   }
 }
 
+/**
+ * Build the environment for a bash subprocess, injecting fresh Pi session
+ * metadata (PI_SESSION_ID, PI_PROVIDER, PI_MODEL, …) so user scripts and
+ * CLI tools can adapt to the active session/model. Stale values inherited
+ * from process.env are cleaned first.
+ */
+function buildBashEnv(ctx: ExtensionContext): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  // Clean any stale PI_* values inherited from the parent process.
+  delete env.PI_SESSION_ID;
+  delete env.PI_SESSION_FILE;
+  delete env.PI_PROVIDER;
+  delete env.PI_MODEL;
+  delete env.PI_REASONING_LEVEL;
+
+  env.PI_SESSION_ID = ctx.sessionManager.getSessionId();
+  const sessionFile = ctx.sessionManager.getSessionFile();
+  if (sessionFile) {
+    env.PI_SESSION_FILE = sessionFile;
+  }
+  if (ctx.model) {
+    env.PI_PROVIDER = ctx.model.provider;
+    env.PI_MODEL = ctx.model.id;
+  }
+  if (ctx.thinkingLevel) {
+    env.PI_REASONING_LEVEL = ctx.thinkingLevel;
+  }
+  return env;
+}
+
 export default function (pi: ExtensionAPI): void {
   SpillCache.installSweeper();
   installLifecycleHandlers();
@@ -103,6 +134,7 @@ export default function (pi: ExtensionAPI): void {
     parameters: bashSchema,
     renderShell: "self",
     executionMode: "sequential",
+    constrainedSampling: { type: "json_schema", strict: "prefer" },
     async execute(_id, params, signal, _onUpdate, ctx) {
       const {
         command,
@@ -120,7 +152,8 @@ export default function (pi: ExtensionAPI): void {
         command,
         timeoutMs,
         signal,
-        effectiveCwd
+        effectiveCwd,
+        buildBashEnv(ctx)
       );
       const text = formatResult(result, timeoutMs);
       if (isErrorResult(result)) {
