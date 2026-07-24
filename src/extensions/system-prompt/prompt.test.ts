@@ -14,6 +14,25 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("- os: Ubuntu 24.04.2 LTS");
     expect(prompt).not.toContain("- platform:");
   });
+
+  test("includes the diagrams behavioral block between system_instructions and environment", () => {
+    const prompt = buildSystemPrompt({
+      cwd: "/repo",
+      contextFiles: [],
+      skillsBlock: "",
+      toolGuidelines: [],
+    });
+
+    expect(prompt).toContain("<diagrams>");
+    expect(prompt).toContain("```diagram");
+    expect(prompt).toContain("</diagrams>");
+
+    const sysIdx = prompt.indexOf("</system_instructions>");
+    const diaIdx = prompt.indexOf("<diagrams>");
+    const envIdx = prompt.indexOf("<environment>");
+    expect(sysIdx).toBeLessThan(diaIdx);
+    expect(diaIdx).toBeLessThan(envIdx);
+  });
 });
 
 describe("describeOs", () => {

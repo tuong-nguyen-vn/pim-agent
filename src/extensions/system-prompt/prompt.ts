@@ -31,6 +31,24 @@ function dynamicGuidelines(): ReadonlyArray<string> {
   return guidelines;
 }
 
+const DIAGRAMS_BLOCK = [
+  "<diagrams>",
+  "When a diagram would explain architecture, workflows, data flow, state transitions, or relationships better than prose alone, create it with a `diagram` code block in your response. Use plain text or box-drawing characters, preferably rounded-corner boxes (\u256d, \u256e, \u2570, \u256f), inside `diagram` blocks. Keep diagrams readable when rendered as monospaced text. Only write Mermaid syntax for diagrams if the user explicitly asks for Mermaid diagrams.",
+  "",
+  "Example:",
+  "```diagram",
+  "\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e     \u256d\u2500\u2500\u2500\u2500\u2500\u256e     \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e",
+  "\u2502 Client \u2502\u2500\u2500\u2500\u2500\u25b6\u2502 API \u2502\u2500\u2500\u2500\u2500\u25b6\u2502 Database \u2502",
+  "\u2570\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u256f     \u2570\u2500\u2500\u252c\u2500\u2500\u256f     \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+  "     \u2502            \u2502",
+  "     \u2502            \u25bc",
+  "     \u2502        \u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e",
+  "     \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25b6\u2502 Worker \u2502",
+  "              \u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f",
+  "```",
+  "</diagrams>",
+].join("\n");
+
 export function buildSystemPrompt(opts: BuildOptions): string {
   const sections: string[] = [];
 
@@ -47,6 +65,8 @@ export function buildSystemPrompt(opts: BuildOptions): string {
       ].join("\n")
     );
   }
+
+  sections.push(DIAGRAMS_BLOCK);
 
   const model = opts.model
     ? `${opts.model.id} via ${opts.model.provider}`
