@@ -35,6 +35,8 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   let splashShown = false;
 
   pi.on("session_start", (event, ctx) => {
+    ctx.ui.setHiddenThinkingLabel("✓ Thinking...");
+
     if (event.reason !== "startup" && event.reason !== "new") {
       return;
     }
