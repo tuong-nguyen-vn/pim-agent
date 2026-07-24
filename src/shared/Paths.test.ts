@@ -69,9 +69,9 @@ describe("Paths.cwdSuffix", () => {
   });
 
   test("abbreviates home for a cwd outside the workspace", () => {
-    expect(
-      Paths.cwdSuffix("~/Workspaces/projects/hdx", "/Users/me/work")
-    ).toBe(" (in: ~/Workspaces/projects/hdx)");
+    expect(Paths.cwdSuffix("~/Workspaces/projects/hdx", "/Users/me/work")).toBe(
+      " (in: ~/Workspaces/projects/hdx)"
+    );
   });
 });
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.7.0
+
+### Features
+
+- Add optional `cwd` parameter to `bash`, `grep`, and `glob` — run commands/searches in any directory without `cd … &&`. Accepts absolute paths only; relative paths are rejected with `Path must be absolute, not relative: …`. Title displays ` (in: <relative>)` when cwd differs from the workspace root.
+- Add `<diagrams>` behavioral block to the system prompt — guides the model to produce box-drawing `diagram` code blocks for architecture/workflow/data-flow explanations, with alignment guidelines to reduce stray characters and text overflow.
+- Inject `PI_*` session metadata (`PI_SESSION_ID`, `PI_SESSION_FILE`, `PI_PROVIDER`, `PI_MODEL`, `PI_REASONING_LEVEL`) into bash subprocesses via `buildBashEnv(ctx)`, so user scripts can adapt to the active session/model.
+- Add `constrainedSampling: { type: 'json_schema', strict: 'prefer' }` to bash, edit, write, apply-patch, and todo — opts into provider-side strict JSON Schema generation, reducing argument errors on weaker models.
+- Enable clickable file links (OSC 8 hyperlinks) in edit, write, and apply-patch tool titles — Alt+Click now works consistently with read.
+
+### Improvements
+
+- Bump `pi-coding-agent` peer dependency to `>=0.82.0`.
+- Add `Paths.cwdSuffix()` and `Paths.requireAbsolute()` helpers.
+- Update `docs/pi-api.md` and `docs/tool-output.md`.
+
 ## v0.6.0
 
 ### Features
